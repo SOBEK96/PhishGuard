@@ -86,6 +86,20 @@
       "result": "MAJORITY_AGREE",
       "status": 5,
       "txExecutionResult": 1
+    },
+    {
+      "step": "fund_bounty_pool(+40000000000000000 wei, mid-epoch top-up)",
+      "hash": "0x1f560a9f953292bed5fc2331bc7899d4253609f6166a2321dc39eb03e5425a12",
+      "statusName": "ACCEPTED",
+      "exec": "FINISHED_WITH_RETURN",
+      "result": "MAJORITY_AGREE"
+    },
+    {
+      "step": "report_target(second target, 0.01 GEN bond)",
+      "hash": "0x58519ba8e0eb89ced33a6d8d55c9c58d36091d67fa591d1df639693fd7663339",
+      "statusName": "ACCEPTED",
+      "exec": "FINISHED_WITH_RETURN",
+      "result": "MAJORITY_AGREE"
     }
   ],
   "readbacks": {
@@ -291,7 +305,7 @@
     }
   ],
   "deviations": [
-    "Pool is 0.07 GEN, not 0.5 GEN: earlier seeds are stranded in superseded contracts (Studio Next never executed their emitted payout transfers). 20% of 0.07 GEN is below the fixed 0.02 GEN bounty, so the live report reserved no bounty.",
+    "Pool is 0.11 GEN (0.07 seed + 0.04 mid-epoch top-up), not 0.5 GEN: earlier seeds are stranded in superseded contracts (Studio Next never executed their emitted payout transfers). The first live report (0.07 GEN pool, cap 0.014) reserved no bounty by design; after the top-up (cap 0.022) the second report reserved the 0.02 GEN bounty - both recorded under transactions / readbacks_after_topup.",
     "The lag rule (1 confirmation + 404/outage -> QUORUM_FAILURE) is verified by tests (720 pytest incl. a 216-combination oracle), not live: demonstrating it needs a fixture present in only ONE pinned feed, and the feeds are pinned to commit 7f7173b (rotation is behind a 7-day timelock).",
     "claim_payout settlement remains unverified on Studio Next.",
     "2 brands registered (uniswap, opensea) to conserve fee deposits."
@@ -300,5 +314,132 @@
     "pytest": "720 passed (tests/)",
     "vitest": "612 passed (frontend/tests)",
     "genvm_lint": "check + typecheck: 0 errors, 0 diagnostics on v0.6.0-rc3/5/6/7/8"
+  },
+  "second_live_target": {
+    "target_id": "opensea-seaport-mint.net",
+    "campaign_id": "seaport-hijack-2026q4",
+    "brand_id": "opensea",
+    "first_seen_ts": 1790200000,
+    "evidence_hash": "a0b0ef95c963dac801a08651d6be516c91d824d641171ab652553fa8d09c8eef"
+  },
+  "readbacks_after_topup": {
+    "pool_before_topup": {
+      "balance": "80000000000000000",
+      "bounty_pool": "70000000000000000",
+      "cooldown_window": 86400,
+      "epoch": 2963,
+      "epoch_cap": "14000000000000000",
+      "epoch_paid": "0",
+      "feed_timelock": 604800,
+      "held_bonds": "10000000000000000",
+      "locked_slash_reserve": "0",
+      "max_epoch_bounty_bps": 2000,
+      "min_appeal_bond": "10000000000000000",
+      "min_report_bond": "10000000000000000",
+      "quarantine_watch": 172800,
+      "reserved_bounty": "0",
+      "solvent": true,
+      "target_count": 1,
+      "tier2_bounty": "20000000000000000",
+      "total_claimable": "0",
+      "total_reports": 1,
+      "total_shares": "70000000000000000"
+    },
+    "pool_after_topup": {
+      "balance": "120000000000000000",
+      "bounty_pool": "110000000000000000",
+      "cooldown_window": 86400,
+      "epoch": 2963,
+      "epoch_cap": "22000000000000000",
+      "epoch_paid": "0",
+      "feed_timelock": 604800,
+      "held_bonds": "10000000000000000",
+      "locked_slash_reserve": "0",
+      "max_epoch_bounty_bps": 2000,
+      "min_appeal_bond": "10000000000000000",
+      "min_report_bond": "10000000000000000",
+      "quarantine_watch": 172800,
+      "reserved_bounty": "0",
+      "solvent": true,
+      "target_count": 1,
+      "tier2_bounty": "20000000000000000",
+      "total_claimable": "0",
+      "total_reports": 1,
+      "total_shares": "110000000000000570"
+    },
+    "get_pool_state": {
+      "balance": "130000000000000000",
+      "bounty_pool": "90000000000000000",
+      "cooldown_window": 86400,
+      "epoch": 2963,
+      "epoch_cap": "22000000000000000",
+      "epoch_paid": "20000000000000000",
+      "feed_timelock": 604800,
+      "held_bonds": "20000000000000000",
+      "locked_slash_reserve": "0",
+      "max_epoch_bounty_bps": 2000,
+      "min_appeal_bond": "10000000000000000",
+      "min_report_bond": "10000000000000000",
+      "quarantine_watch": 172800,
+      "reserved_bounty": "20000000000000000",
+      "solvent": true,
+      "target_count": 2,
+      "tier2_bounty": "20000000000000000",
+      "total_claimable": "0",
+      "total_reports": 2,
+      "total_shares": "110000000000000570"
+    },
+    "get_target_status_second": {
+      "bond_amount": "10000000000000000",
+      "bond_held": "10000000000000000",
+      "bounty_reserved": "20000000000000000",
+      "brand_id": "opensea",
+      "campaign_id": "seaport-hijack-2026q4",
+      "effective_from": "opensea-seaport-mint.net",
+      "effective_status": "BLACKLISTED",
+      "effective_tier": 2,
+      "evidence_hash": "a0b0ef95c963dac801a08651d6be516c91d824d641171ab652553fa8d09c8eef",
+      "first_seen_ts": 1790200000,
+      "inherited": false,
+      "known": true,
+      "override_ts": 0,
+      "published_ts": 1790300000,
+      "quarantine_until": 0,
+      "report_ts": 1792088492,
+      "reporter": "0xfc35738e3c8da590e1fe0006e25fd031f93df246",
+      "resolutions": 1,
+      "source_count": 3,
+      "status": "BLACKLISTED",
+      "target_id": "opensea-seaport-mint.net",
+      "tier": 2,
+      "tier_name": "TIER_2_DRAINER",
+      "vest_at": 1792174892
+    },
+    "check_transaction_safety_second_subdomain": {
+      "blocked": true,
+      "inherited": true,
+      "known": true,
+      "matched_target": "opensea-seaport-mint.net",
+      "quarantine_until": 0,
+      "status": "BLACKLISTED",
+      "target_id": "pay.opensea-seaport-mint.net",
+      "tier": 2,
+      "tier_name": "TIER_2_DRAINER",
+      "verdict": "BLOCK",
+      "warn": false
+    },
+    "check_transaction_safety_first": {
+      "blocked": true,
+      "inherited": false,
+      "known": true,
+      "matched_target": "uniswap-claim-airdrop.com",
+      "quarantine_until": 0,
+      "status": "BLACKLISTED",
+      "target_id": "uniswap-claim-airdrop.com",
+      "tier": 2,
+      "tier_name": "TIER_2_DRAINER",
+      "verdict": "BLOCK",
+      "warn": false
+    }
   }
 }

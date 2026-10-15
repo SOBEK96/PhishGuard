@@ -30,19 +30,25 @@ Transactions (all `ACCEPTED` / `MAJORITY_AGREE`):
 | register_brand:opensea | `0x1fd94ab8fe4534706a0540bcd50531b5ddc4583ea58fb14728ea6ed1149efe85` |
 | fund_bounty_pool(70000000000000000 wei) | `0x4db25ace306ead69d371f8ba8b2d0ab67d24cff5635cc0f87c438c8ef738732d` |
 | report_target(0.01 GEN bond) | `0xcd8ec346d2671a3f3656ea07763a5281877b93671500e6091f1fdd1d8b08c1b8` |
+| fund_bounty_pool(+40000000000000000 wei, mid-epoch top-up) | `0x1f560a9f953292bed5fc2331bc7899d4253609f6166a2321dc39eb03e5425a12` |
+| report_target(second target, 0.01 GEN bond) | `0x58519ba8e0eb89ced33a6d8d55c9c58d36091d67fa591d1df639693fd7663339` |
 
 Live `gen_call` readbacks (full output in `deployments/studio-next.json`):
 
 * `get_target_status("uniswap-claim-airdrop.com")` -> `BLACKLISTED`, tier 2, `source_count 3`, `bond_held 0.01 GEN`
 * `check_transaction_safety` -> exact `BLOCK`; `app.…` -> `BLOCK` (inherited); `claim.app.…` -> `BLOCK`; unrelated host -> `ALLOW`
 * `assert_target_safe` reverts for the exact host and for `app.…`
-* `get_pool_state()` -> `bounty_pool 0.07 GEN`, `epoch_cap 0.014 GEN` (20 % of net capital), `solvent: true`
+* **Bounty-reserve flow (live, after the 0.04 GEN top-up):** pool 0.07 -> 0.11 GEN raised the cap 0.014 -> 0.022 GEN
+  (20 % of net capital); the second report (`opensea-seaport-mint.net`, `source_count 3`) is `BLACKLISTED` with
+  `bounty_reserved 0.02 GEN`; `get_pool_state()` -> `bounty_pool 0.09 GEN`, `reserved_bounty 0.02 GEN`,
+  `held_bonds 0.02 GEN` (two bonds), `epoch_paid 0.02 GEN`, `solvent: true`; `pay.opensea-seaport-mint.net` -> `BLOCK` (inherited)
 * `get_feed_sources()` -> `raw.githubusercontent.com` / `cdn.jsdelivr.net` / `raw.githack.com`
 
 ### Honest deviations
 
-* **The live pool is small (0.07 GEN) and no bounty was reserved live**: 20 % of 0.07 GEN is below the fixed 0.02 GEN
-  bounty. Earlier seeds sit in superseded contracts whose emitted payout transfers Studio Next never executed.
+* **The live pool is small (0.11 GEN), not 0.5 GEN.** Earlier seeds sit in superseded contracts whose emitted payout
+  transfers Studio Next never executed. The first report (0.07 GEN pool) reserved no bounty because 20 % of 0.07 is
+  below the fixed 0.02 GEN bounty; after the top-up the second report reserved it (see readbacks).
 * **`claim_payout` settlement is unverified on Studio Next.** A successful receipt means "recorded", not "paid".
 * **The lag rule is test-verified, not live-verified.** Showing "1 confirmation + 404s -> QUORUM_FAILURE" on chain
   needs a fixture present in only one pinned feed; the feeds are pinned to commit `7f7173b` and rotation sits behind
