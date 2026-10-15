@@ -1,5 +1,5 @@
 /** Share-redemption math, mirroring `withdraw_pool_shares` in the contract. */
-import type { PoolState } from "./types";
+import type { PoolState, VestEntry } from "./types";
 
 /** Shares permanently held by nobody: the pool can never be fully redeemed. */
 export const MIN_LOCKED_SHARES = 1000n;
@@ -30,6 +30,17 @@ export function lockBreakdown(pool: PoolState): LockBreakdown {
     slashReserve: BigInt(pool.locked_slash_reserve),
     deadShares: total === 0n ? 0n : MIN_LOCKED_SHARES,
     outsideShares: total > MIN_LOCKED_SHARES ? total - MIN_LOCKED_SHARES : 0n,
+  };
+}
+
+/** Entries an account owns that still hold value, split by whether they have vested. */
+export function vestStatus(entries: VestEntry[], account: string, nowSeconds: number) {
+  const mine = entries.filter(
+    (e) => account !== "" && e.owner.toLowerCase() === account.toLowerCase() && (BigInt(e.bond) > 0n || BigInt(e.bounty) > 0n),
+  );
+  return {
+    claimable: mine.filter((e) => e.vest_at <= nowSeconds),
+    pending: mine.filter((e) => e.vest_at > nowSeconds),
   };
 }
 

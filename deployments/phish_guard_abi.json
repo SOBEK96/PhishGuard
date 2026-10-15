@@ -106,6 +106,18 @@
       "ret": "string",
       "payable": false
     },
+    "claim_vested": {
+      "params": [
+        [
+          "entry_id",
+          "int"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": false,
+      "ret": "string",
+      "payable": false
+    },
     "claimable_of": {
       "params": [
         [
@@ -198,6 +210,23 @@
         [
           "target_id",
           "string"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": true,
+      "ret": "dict"
+    },
+    "get_vest_count": {
+      "params": [],
+      "kwparams": {},
+      "readonly": true,
+      "ret": "int"
+    },
+    "get_vest_entry": {
+      "params": [
+        [
+          "entry_id",
+          "int"
         ]
       ],
       "kwparams": {},

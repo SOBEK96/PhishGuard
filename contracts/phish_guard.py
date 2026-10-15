@@ -547,6 +547,16 @@ class Target:
     resolutions: u256
 
 
+@allow_storage
+@dataclass
+class VestEntry:
+    owner: Address
+    target_id: str
+    bond: u256
+    bounty: u256
+    vest_at: u256
+
+
 class PhishGuard(gl.contract.Contract):
     targets: TreeMap[str, Target]
     target_index: TreeMap[u256, str]
@@ -573,11 +583,14 @@ class PhishGuard(gl.contract.Contract):
     shares: TreeMap[str, u256]
     # Anti-farming bookkeeping.
     epoch_paid: TreeMap[u256, u256]
-    epoch_cap: TreeMap[u256, u256]
     reporter_epoch_bounties: TreeMap[str, u256]
     campaign_paid: TreeMap[str, bool]
     governor: Address
     total_reports: u256
+    # Escrow superseded by a re-report keeps its ORIGINAL vest time here; a new
+    # report on the same domain can neither shorten nor inherit it.
+    vest_entries: TreeMap[u256, VestEntry]
+    vest_count: u256
 
     def __init__(
         self,
@@ -617,6 +630,7 @@ class PhishGuard(gl.contract.Contract):
         self.total_claimable = 0
         self.total_shares = 0
         self.total_reports = 0
+        self.vest_count = 0
 
     # ------------------------------------------------------------------ views
     @gl.public.view
@@ -643,7 +657,7 @@ class PhishGuard(gl.contract.Contract):
         epoch = self._epoch(self._now())
         e = epoch
         paid = int(self.epoch_paid[e]) if e in self.epoch_paid else 0
-        cap = int(self.epoch_cap[e]) if e in self.epoch_cap else (int(self.bounty_pool) * MAX_EPOCH_BOUNTY_BPS // BPS_DENOM)
+        cap = self._epoch_cap()
         return {
             "balance": str(self.balance),
             "bounty_pool": str(self.bounty_pool),
@@ -916,11 +930,6 @@ class PhishGuard(gl.contract.Contract):
             raise gl.vm.UserError(f"{ERR_BOND} deposit too small")
         self.shares[key] = (int(self.shares[key]) if key in self.shares else 0) + minted
         self.bounty_pool = assets + amount
-        # Capital added mid-epoch raises that epoch's cap by the same 20 % share,
-        # so a report made while the pool was empty cannot freeze the cap at 0.
-        e = self._epoch(self._now())
-        if e in self.epoch_cap:
-            self.epoch_cap[e] = int(self.epoch_cap[e]) + amount * MAX_EPOCH_BOUNTY_BPS // BPS_DENOM
         return str(minted)
 
     @gl.public.write
@@ -941,14 +950,6 @@ class PhishGuard(gl.contract.Contract):
         self.shares[key] = have - n
         self.total_shares = total - n
         self.bounty_pool = assets - out
-        # Mirror image of funding: withdrawn liquidity leaves the cap too (never
-        # below what was already paid), so deposit/withdraw cannot inflate it.
-        e = self._epoch(self._now())
-        if e in self.epoch_cap:
-            paid = int(self.epoch_paid[e]) if e in self.epoch_paid else 0
-            cut = out * MAX_EPOCH_BOUNTY_BPS // BPS_DENOM
-            cap = int(self.epoch_cap[e])
-            self.epoch_cap[e] = paid if cap - cut < paid else cap - cut
         self._credit(key, out)
         return str(out)
 
@@ -1139,6 +1140,49 @@ class PhishGuard(gl.contract.Contract):
         self._credit(_hex(t.reporter), bond + bounty)
         return str(bond + bounty)
 
+    @gl.public.write
+    def claim_vested(self, entry_id: u256) -> str:
+        """Owner pulls an escrow entry superseded by a re-report, once ITS
+        original cooldown has elapsed."""
+        i = int(entry_id)
+        if i not in self.vest_entries:
+            raise gl.vm.UserError(f"{ERR_STATE} unknown vest entry")
+        v = self.vest_entries[i]
+        if gl.message.sender_address != v.owner:
+            raise gl.vm.UserError(f"{ERR_UNAUTHORIZED} only the owner may claim")
+        if self._now() < int(v.vest_at):
+            raise gl.vm.UserError(f"{ERR_TIMELOCK} cooldown window still running")
+        bond = int(v.bond)
+        bounty = int(v.bounty)
+        if bond == 0 and bounty == 0:
+            raise gl.vm.UserError(f"{ERR_NOTHING}")
+        v.bond = 0
+        v.bounty = 0
+        self.vest_entries[i] = v
+        self.held_bonds = int(self.held_bonds) - bond
+        self.reserved_bounty = int(self.reserved_bounty) - bounty
+        self._credit(_hex(v.owner), bond + bounty)
+        return str(bond + bounty)
+
+    @gl.public.view
+    def get_vest_count(self) -> int:
+        return int(self.vest_count)
+
+    @gl.public.view
+    def get_vest_entry(self, entry_id: u256) -> dict:
+        i = int(entry_id)
+        if i not in self.vest_entries:
+            raise gl.vm.UserError(f"{ERR_PARAMS} unknown vest entry")
+        v = self.vest_entries[i]
+        return {
+            "id": i,
+            "owner": _hex(v.owner),
+            "target_id": v.target_id,
+            "bond": str(v.bond),
+            "bounty": str(v.bounty),
+            "vest_at": int(v.vest_at),
+        }
+
     # ---------------------------------------------------------------- appeals
     @gl.public.write.payable
     def appeal_classification(self, target_id: str) -> str:
@@ -1261,6 +1305,17 @@ class PhishGuard(gl.contract.Contract):
     def _epoch(self, ts: int) -> int:
         return ts // EPOCH_SECONDS
 
+    def _epoch_cap(self) -> int:
+        """Per-epoch bounty budget: max_epoch_bounty_bps of NET vault capital.
+
+        Net capital is free liquidity plus bounties still escrowed (a reserved
+        bounty is pool money that has not left the vault yet). It is a pure
+        function of current balances -- not of cumulative deposits -- so
+        recycling the same liquidity through deposit/withdraw cannot inflate
+        it, and funding an empty pool mid-epoch is reflected immediately."""
+        capital = int(self.bounty_pool) + int(self.reserved_bounty)
+        return capital * MAX_EPOCH_BOUNTY_BPS // BPS_DENOM
+
     def _solvent(self) -> bool:
         tracked = (
             int(self.bounty_pool)
@@ -1315,12 +1370,22 @@ class PhishGuard(gl.contract.Contract):
         bounty = int(prior.bounty_reserved)
         if bond == 0 and bounty == 0:
             return
-        self.held_bonds = int(self.held_bonds) - bond
-        self.reserved_bounty = int(self.reserved_bounty) - bounty
+        prior_vest_at = int(prior.vest_at)
         prior.bond_held = 0
         prior.bounty_reserved = 0
         self.targets[target_id] = prior
-        self._credit(_hex(prior.reporter), bond + bounty)
+        # The escrow moves to its own vesting entry carrying the ORIGINAL vest
+        # time: it is neither paid out early nor delayed, and it cannot be
+        # confused with (or shorten) the new report's fresh 24h window.
+        idx = int(self.vest_count)
+        self.vest_entries[idx] = VestEntry(
+            owner=prior.reporter,
+            target_id=target_id,
+            bond=bond,
+            bounty=bounty,
+            vest_at=prior_vest_at,
+        )
+        self.vest_count = idx + 1
 
     def _store_target(self, target_id: str, existing: bool, t: Target) -> None:
         if not existing:
@@ -1349,11 +1414,11 @@ class PhishGuard(gl.contract.Contract):
         if count >= MAX_BOUNTIES_PER_REPORTER_EPOCH:
             return
         pool = int(self.bounty_pool)
-        if e not in self.epoch_cap:
-            self.epoch_cap[e] = pool * MAX_EPOCH_BOUNTY_BPS // BPS_DENOM
-            self.epoch_paid[e] = 0
-        paid = int(self.epoch_paid[e])
-        if paid + TIER2_BOUNTY > int(self.epoch_cap[e]) or TIER2_BOUNTY > pool:
+        paid = int(self.epoch_paid[e]) if e in self.epoch_paid else 0
+        # The cap is derived from NET capital at the moment of reservation, so
+        # no deposit/withdraw sequence can ever raise the total reserved in an
+        # epoch above 20 % of the capital actually still in the vault.
+        if paid + TIER2_BOUNTY > self._epoch_cap() or TIER2_BOUNTY > pool:
             return
         self.epoch_paid[e] = paid + TIER2_BOUNTY
         self.reporter_epoch_bounties[rk] = count + 1

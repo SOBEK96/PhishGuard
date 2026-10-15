@@ -4,8 +4,9 @@ import { useState } from "react";
 import { Vault } from "lucide-react";
 import Panel from "./Panel";
 import TxBannerView from "./TxBannerView";
-import { claimPayout, claimSettlement, fundPool, withdrawShares } from "@/lib/contract";
-import { lockBreakdown, redeemableAssets, validateRedeem } from "@/lib/vault";
+import { claimPayout, claimSettlement, claimVested, fundPool, withdrawShares } from "@/lib/contract";
+import { lockBreakdown, redeemableAssets, validateRedeem, vestStatus } from "@/lib/vault";
+import { formatDuration } from "@/lib/format";
 import { bpsToPercent, formatGen, parseGen, ratioBps } from "@/lib/format";
 import type { Dashboard } from "@/lib/useDashboard";
 
@@ -59,6 +60,7 @@ export default function BountyVault({ d }: { d: Dashboard }) {
   const totalShares = BigInt(p.total_shares);
   const freePool = BigInt(p.bounty_pool);
   const lock = lockBreakdown(p);
+  const vest = vestStatus(d.vestEntries, d.account, d.now);
   const redeemAll = redeemableAssets(held, totalShares, freePool);
   let redeemShares = 0n;
   let redeemParseError: string | null = null;
@@ -179,6 +181,32 @@ export default function BountyVault({ d }: { d: Dashboard }) {
           <li>share floor: {lock.deadShares.toString()} dead shares can never be redeemed</li>
         </ul>
       </div>
+      {(vest.claimable.length > 0 || vest.pending.length > 0) && (
+        <div className="mt-4 rounded border border-edge bg-carbon/70 p-3">
+          <div className="text-[11px] uppercase tracking-wider text-mute">Superseded escrow (keeps its original cooldown)</div>
+          <ul className="mt-2 space-y-2">
+            {vest.claimable.map((e) => (
+              <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className="sig">
+                  #{e.id} {e.target_id} - {formatGen(BigInt(e.bond) + BigInt(e.bounty), 4)} GEN
+                </span>
+                <button
+                  disabled={busy}
+                  onClick={() => void run("Claim vested escrow", (a, h) => claimVested(a, e.id, h))}
+                  className="min-h-11 rounded border border-caution/60 px-4 text-caution"
+                >
+                  Claim vested
+                </button>
+              </li>
+            ))}
+            {vest.pending.map((e) => (
+              <li key={e.id} className="sig text-xs text-mute">
+                #{e.id} {e.target_id} - {formatGen(BigInt(e.bond) + BigInt(e.bounty), 4)} GEN unlocks in {formatDuration(e.vest_at - d.now)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <TxBannerView banner={d.banner} />
     </Panel>
   );

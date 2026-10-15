@@ -1,5 +1,5 @@
 /** Strict decoders for contract view output: never trust the wire shape. */
-import type { FeedSource, PoolState, SafetyCheck, TargetState, TargetStatus, TierNumber } from "./types";
+import type { FeedSource, PoolState, SafetyCheck, TargetState, TargetStatus, TierNumber, VestEntry } from "./types";
 
 const STATES: TargetState[] = [
   "UNKNOWN", "DISMISSED", "QUARANTINED", "BLACKLISTED", "CLEARED", "REVOKED_FALSE_POSITIVE", "REMEDIATED",
@@ -121,6 +121,18 @@ export function parseTarget(v: unknown): TargetStatus {
     effective_tier: tier(o, "effective_tier"),
     effective_from: str(o, "effective_from"),
     inherited: bool(o, "inherited"),
+  };
+}
+
+export function parseVestEntry(v: unknown): VestEntry {
+  const o = obj(v, "vest entry");
+  return {
+    id: int(o, "id"),
+    owner: str(o, "owner"),
+    target_id: str(o, "target_id"),
+    bond: wei(o, "bond"),
+    bounty: wei(o, "bounty"),
+    vest_at: int(o, "vest_at"),
   };
 }
 

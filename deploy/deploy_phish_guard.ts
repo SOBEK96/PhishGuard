@@ -115,7 +115,11 @@ async function write(client: any, account: any, address: string, functionName: s
   return { hash, receipt, gate };
 }
 
+// Studio Next rate-limits RPC at 30 requests/minute; pace the readbacks.
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function read(client: any, address: string, functionName: string, args: unknown[] = []) {
+  await sleep(2500);
   return toJson(await client.readContract({ address, functionName, args }));
 }
 
@@ -172,7 +176,8 @@ async function main() {
 
   // --- brand registry + pool seed ---------------------------------------------
   const txs: Record<string, unknown>[] = [{ step: "deploy", hash: deployHash, ...deployGate }];
-  for (const [brand, domain] of BRANDS) {
+  const BRAND_COUNT = Number(process.env.PHISHGUARD_BRAND_COUNT ?? BRANDS.length);
+  for (const [brand, domain] of BRANDS.slice(0, BRAND_COUNT)) {
     const r = await write(dClient, deployer, address, "register_brand", [brand, domain]);
     txs.push({ step: `register_brand:${brand}`, hash: r.hash, ...r.gate });
   }

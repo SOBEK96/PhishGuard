@@ -72,6 +72,16 @@ export interface TargetStatus {
   inherited: boolean;
 }
 
+/** Escrow superseded by a re-report: keeps its ORIGINAL vest time. */
+export interface VestEntry {
+  id: number;
+  owner: string;
+  target_id: string;
+  bond: string;
+  bounty: string;
+  vest_at: number;
+}
+
 export type FirewallVerdict = "ALLOW" | "WARN" | "BLOCK";
 
 export interface SafetyCheck {

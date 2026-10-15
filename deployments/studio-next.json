@@ -2,13 +2,13 @@
   "network": "studio-next",
   "chain_id": 61997,
   "rpc_url": "https://studio-next.genlayer.com/api",
-  "explorer_url": "https://explorer-studio-next.genlayer.com/address/0x4890C058f446A2B8DAb7d5b80c6F75B436756507",
-  "contract_address": "0x4890C058f446A2B8DAb7d5b80c6F75B436756507",
+  "explorer_url": "https://explorer-studio-next.genlayer.com/address/0x07d4631B39CD5817f28C2Aff0f28B58f34911077",
+  "contract_address": "0x07d4631B39CD5817f28C2Aff0f28B58f34911077",
   "deployer_address": "0xE6d38f463c03b2B9fB42a9D565c69a1ddc283964",
   "reporter_address": "0xfc35738E3c8dA590E1Fe0006E25FD031f93df246",
   "source": "contracts/phish_guard.py",
-  "source_sha256": "2123670368f120923fded700b707ae9d7b43e15655b18b159efcea2249524889",
-  "deployed_code_sha256": "2123670368f120923fded700b707ae9d7b43e15655b18b159efcea2249524889",
+  "source_sha256": "2d882b08fccb1a2daebdb19cd9d19799e79784e6d76969508959d76d72cf883e",
+  "deployed_code_sha256": "2d882b08fccb1a2daebdb19cd9d19799e79784e6d76969508959d76d72cf883e",
   "feed_pin": {
     "repo": "https://github.com/SOBEK96/PhishGuard",
     "commit": "7f7173bf44bc1b868733978b9675882b9f6ac7f8",
@@ -27,7 +27,7 @@
       }
     }
   },
-  "seed_wei": "80000000000000000",
+  "seed_wei": "12000000000000000",
   "live_target": {
     "target_id": "uniswap-claim-airdrop.com",
     "campaign_id": "permit2-airdrop-2026q4",
@@ -35,100 +35,46 @@
     "first_seen_ts": 1790000000,
     "evidence_hash": "e703e5c6ef0cf8d1a358411cb4bd4143ec312adbc6e74b569e85e91d29b98e47"
   },
-  "deployed_at": "2026-10-15T16:08:09.205Z",
+  "deployed_at": "2026-10-15T16:47:10.588158Z",
   "transactions": [
     {
       "step": "deploy",
-      "hash": "0x79aa13e0f15261269903797bb834166b0adf988c1a4284178e5cb5d3c6ccc7cc",
-      "label": "deploy",
+      "hash": "0xb67635de53005499ddbb3bb0b9f206b306422eda1c79e40badcde4c8caccca72",
       "statusName": "ACCEPTED",
-      "exec": "FINISHED_WITH_RETURN",
-      "result": "MAJORITY_AGREE",
-      "status": 5,
-      "txExecutionResult": 1
-    },
-    {
-      "step": "register_brand:uniswap",
-      "hash": "0xce04e38315147b92cac3d77c4a7c2b701609eec01c9fc8da678ba39e00faa1b8",
-      "label": "register_brand",
-      "statusName": "ACCEPTED",
-      "exec": "FINISHED_WITH_RETURN",
-      "result": "MAJORITY_AGREE",
-      "status": 5,
-      "txExecutionResult": 1
-    },
-    {
-      "step": "register_brand:opensea",
-      "hash": "0x411304b43168db0182be6095c24040de180b8a9bf334b062860f87e3536b192c",
-      "label": "register_brand",
-      "statusName": "ACCEPTED",
-      "exec": "FINISHED_WITH_RETURN",
-      "result": "MAJORITY_AGREE",
-      "status": 5,
-      "txExecutionResult": 1
-    },
-    {
-      "step": "register_brand:rabby",
-      "hash": "0xc16fad83901861fd95bddaa247182675a0a8cbd5726712434dc1720addc6c6ed",
-      "label": "register_brand",
-      "statusName": "ACCEPTED",
-      "exec": "FINISHED_WITH_RETURN",
-      "result": "MAJORITY_AGREE",
-      "status": 5,
-      "txExecutionResult": 1
-    },
-    {
-      "step": "register_brand:aave",
-      "hash": "0x21d2f047b1f292bcb8e41d07e2ad458aa91a9d02885232d777cd9677e2f2f03a",
-      "label": "register_brand",
-      "statusName": "ACCEPTED",
-      "exec": "FINISHED_WITH_RETURN",
-      "result": "MAJORITY_AGREE",
-      "status": 5,
-      "txExecutionResult": 1
-    },
-    {
-      "step": "fund_bounty_pool(80000000000000000 wei)",
-      "hash": "0xdd00cc7211b82ed8ed309545af017bdc656f94495224d723314270bd3ddf8317",
-      "label": "fund_bounty_pool",
-      "statusName": "ACCEPTED",
-      "exec": "FINISHED_WITH_RETURN",
-      "result": "MAJORITY_AGREE",
-      "status": 5,
-      "txExecutionResult": 1
-    },
-    {
-      "step": "report_target(0.01 GEN bond)",
-      "hash": "0x902599daf34cf90e07ce73c1ded59ce6f3c0354a2fec25726287a85de3fe7671",
-      "label": "report_target",
-      "statusName": "ACCEPTED",
-      "exec": "FINISHED_WITH_RETURN",
-      "result": "MAJORITY_AGREE",
-      "status": 5,
-      "txExecutionResult": 1
-    },
-    {
-      "step": "fund_bounty_pool(+40000000000000000 wei, mid-epoch top-up)",
-      "hash": "0x3c570627e4ce0db4ea1c0562244e3db58552c347d4c73d06a821f85e0fb2f9de",
-      "statusName": "ACCEPTED",
-      "exec": "FINISHED_WITH_RETURN",
       "result": "MAJORITY_AGREE"
     },
     {
-      "step": "report_target(second target, 0.01 GEN bond)",
-      "hash": "0x6783208280f16c2145f991d546573353976896405061fedd3bb73071b9a2f885",
+      "step": "register_brand:uniswap",
+      "hash": "0x859d6a5ba551b2c4fd76505a254c372188e249a7b2fd75ed9331b7cfa3d7bff0",
       "statusName": "ACCEPTED",
-      "exec": "FINISHED_WITH_RETURN",
+      "result": "MAJORITY_AGREE"
+    },
+    {
+      "step": "register_brand:opensea",
+      "hash": "0x89edbb5a0736331944c067aa71833a56855421cf3d144475c595451584fa224c",
+      "statusName": "ACCEPTED",
+      "result": "MAJORITY_AGREE"
+    },
+    {
+      "step": "fund_bounty_pool(12000000000000000 wei)",
+      "hash": "0x32f9098eb0a786182eb029f6650114e276328a6770f6e10a400f056b1d4123c1",
+      "statusName": "ACCEPTED",
+      "result": "MAJORITY_AGREE"
+    },
+    {
+      "step": "report_target(0.01 GEN bond)",
+      "hash": "0x37020a3c3388faefcf5135cd660d5cd21845d110aff9b54c2b9a4280280b4c5c",
+      "statusName": "ACCEPTED",
       "result": "MAJORITY_AGREE"
     }
   ],
   "readbacks": {
     "get_pool_state": {
-      "balance": "90000000000000000",
-      "bounty_pool": "80000000000000000",
+      "balance": "22000000000000000",
+      "bounty_pool": "12000000000000000",
       "cooldown_window": 86400,
       "epoch": 2963,
-      "epoch_cap": "16000000000000000",
+      "epoch_cap": "2400000000000000",
       "epoch_paid": "0",
       "feed_timelock": 604800,
       "held_bonds": "10000000000000000",
@@ -143,7 +89,7 @@
       "tier2_bounty": "20000000000000000",
       "total_claimable": "0",
       "total_reports": 1,
-      "total_shares": "80000000000000000"
+      "total_shares": "12000000000000000"
     },
     "get_target_status": {
       "bond_amount": "10000000000000000",
@@ -161,7 +107,7 @@
       "override_ts": 0,
       "published_ts": 1790100000,
       "quarantine_until": 0,
-      "report_ts": 1792080466,
+      "report_ts": 1792082727,
       "reporter": "0xfc35738e3c8da590e1fe0006e25fd031f93df246",
       "resolutions": 1,
       "source_count": 3,
@@ -169,7 +115,7 @@
       "target_id": "uniswap-claim-airdrop.com",
       "tier": 2,
       "tier_name": "TIER_2_DRAINER",
-      "vest_at": 1792166866
+      "vest_at": 1792169127
     },
     "get_feed_sources": [
       {
@@ -281,142 +227,19 @@
       "verdict": "ALLOW",
       "warn": false
     },
+    "assert_target_safe_exact": {
+      "reverted": true,
+      "error": "Details: execution failed Version: viem@2.57.7"
+    },
     "assert_target_safe_subdomain": {
       "reverted": true,
-      "error": "Missing or invalid parameters.\nDouble check you have provided the correct parameters.\n\nDetails: execution failed\nVersion: viem@2.57.7"
+      "error": "Details: execution failed Version: viem@2.57.7"
     },
-    "get_governor": "0xe6d38f463c03b2b9fb42a9d565c69a1ddc283964",
-    "get_brand_uniswap": "app.uniswap.org"
-  },
-  "second_live_target": {
-    "target_id": "opensea-seaport-mint.net",
-    "campaign_id": "seaport-hijack-2026q4",
-    "brand_id": "opensea",
-    "first_seen_ts": 1790200000,
-    "evidence_hash": "a0b0ef95c963dac801a08651d6be516c91d824d641171ab652553fa8d09c8eef"
-  },
-  "readbacks_after_topup": {
-    "pool_before_topup": {
-      "balance": "90000000000000000",
-      "bounty_pool": "80000000000000000",
-      "cooldown_window": 86400,
-      "epoch": 2963,
-      "epoch_cap": "16000000000000000",
-      "epoch_paid": "0",
-      "feed_timelock": 604800,
-      "held_bonds": "10000000000000000",
-      "locked_slash_reserve": "0",
-      "max_epoch_bounty_bps": 2000,
-      "min_appeal_bond": "10000000000000000",
-      "min_report_bond": "10000000000000000",
-      "quarantine_watch": 172800,
-      "reserved_bounty": "0",
-      "solvent": true,
-      "target_count": 1,
-      "tier2_bounty": "20000000000000000",
-      "total_claimable": "0",
-      "total_reports": 1,
-      "total_shares": "80000000000000000"
-    },
-    "pool_after_topup": {
-      "balance": "130000000000000000",
-      "bounty_pool": "120000000000000000",
-      "cooldown_window": 86400,
-      "epoch": 2963,
-      "epoch_cap": "24000000000000000",
-      "epoch_paid": "0",
-      "feed_timelock": 604800,
-      "held_bonds": "10000000000000000",
-      "locked_slash_reserve": "0",
-      "max_epoch_bounty_bps": 2000,
-      "min_appeal_bond": "10000000000000000",
-      "min_report_bond": "10000000000000000",
-      "quarantine_watch": 172800,
-      "reserved_bounty": "0",
-      "solvent": true,
-      "target_count": 1,
-      "tier2_bounty": "20000000000000000",
-      "total_claimable": "0",
-      "total_reports": 1,
-      "total_shares": "120000000000000499"
-    },
-    "get_pool_state": {
-      "balance": "140000000000000000",
-      "bounty_pool": "100000000000000000",
-      "cooldown_window": 86400,
-      "epoch": 2963,
-      "epoch_cap": "24000000000000000",
-      "epoch_paid": "20000000000000000",
-      "feed_timelock": 604800,
-      "held_bonds": "20000000000000000",
-      "locked_slash_reserve": "0",
-      "max_epoch_bounty_bps": 2000,
-      "min_appeal_bond": "10000000000000000",
-      "min_report_bond": "10000000000000000",
-      "quarantine_watch": 172800,
-      "reserved_bounty": "20000000000000000",
-      "solvent": true,
-      "target_count": 2,
-      "tier2_bounty": "20000000000000000",
-      "total_claimable": "0",
-      "total_reports": 2,
-      "total_shares": "120000000000000499"
-    },
-    "get_target_status_second": {
-      "bond_amount": "10000000000000000",
-      "bond_held": "10000000000000000",
-      "bounty_reserved": "20000000000000000",
-      "brand_id": "opensea",
-      "campaign_id": "seaport-hijack-2026q4",
-      "effective_from": "opensea-seaport-mint.net",
-      "effective_status": "BLACKLISTED",
-      "effective_tier": 2,
-      "evidence_hash": "a0b0ef95c963dac801a08651d6be516c91d824d641171ab652553fa8d09c8eef",
-      "first_seen_ts": 1790200000,
-      "inherited": false,
-      "known": true,
-      "override_ts": 0,
-      "published_ts": 1790300000,
-      "quarantine_until": 0,
-      "report_ts": 1792080564,
-      "reporter": "0xfc35738e3c8da590e1fe0006e25fd031f93df246",
-      "resolutions": 1,
-      "source_count": 3,
-      "status": "BLACKLISTED",
-      "target_id": "opensea-seaport-mint.net",
-      "tier": 2,
-      "tier_name": "TIER_2_DRAINER",
-      "vest_at": 1792166964
-    },
-    "check_transaction_safety_second_subdomain": {
-      "blocked": true,
-      "inherited": true,
-      "known": true,
-      "matched_target": "opensea-seaport-mint.net",
-      "quarantine_until": 0,
-      "status": "BLACKLISTED",
-      "target_id": "pay.opensea-seaport-mint.net",
-      "tier": 2,
-      "tier_name": "TIER_2_DRAINER",
-      "verdict": "BLOCK",
-      "warn": false
-    },
-    "check_transaction_safety_first": {
-      "blocked": true,
-      "inherited": false,
-      "known": true,
-      "matched_target": "uniswap-claim-airdrop.com",
-      "quarantine_until": 0,
-      "status": "BLACKLISTED",
-      "target_id": "uniswap-claim-airdrop.com",
-      "tier": 2,
-      "tier_name": "TIER_2_DRAINER",
-      "verdict": "BLOCK",
-      "warn": false
-    }
+    "get_vest_count": 0,
+    "get_governor": "0xe6d38f463c03b2b9fb42a9d565c69a1ddc283964"
   },
   "faucet": {
-    "attempt": "sim_fundAccount(0xe6d3\u2026, 1 GEN) and (0xfc35\u2026, 1 GEN) returned tx hashes but both balances stayed 0",
+    "attempt": "sim_fundAccount(0xe6d3…, 1 GEN) and (0xfc35…, 1 GEN) returned tx hashes but both balances stayed 0",
     "fallback": "deployer topped up 0.39 GEN from aetherclaim-admin and 0.13 GEN from aetherclaim-farmer; reporter 0.04 GEN from aetherclaim-farmer (existing unlocked CLI accounts, as authorized)"
   },
   "superseded_deployments": [
@@ -435,16 +258,24 @@
       "deploy_tx": "0xf04e86a9456a2b660182760d6d9a7861b0540353f1c8b0c29f36806e74476305",
       "reason": "eacf14c, superseded by the audit-hardening pass (P01 stranded reserved bounty, P02 future published_ts, P03 epoch cap, P06 subdomains, typecheck, source_count agreement)",
       "state": "left live and untouched; holds 0.1 GEN pool + one blacklisted target"
+    },
+    {
+      "contract_address": "0x4890C058f446A2B8DAb7d5b80c6F75B436756507",
+      "source_sha256": "2123670368f120923fded700b707ae9d7b43e15655b18b159efcea2249524889",
+      "deploy_tx": "0x79aa13e0f15261269903797bb834166b0adf988c1a4284178e5cb5d3c6ccc7cc",
+      "reason": "f8434bd: epoch cap tracked deposit/withdraw deltas (recycling inflated it: 0.18 GEN reservable from 0.5 GEN) and a re-report paid the prior cycle's unvested bounty out immediately",
+      "state": "left live and untouched; holds 0.12 GEN pool, two blacklisted targets"
     }
   ],
   "deviations": [
-    "Bounty pool seeded with 0.08 GEN (then +0.04 mid-epoch) instead of 0.5 GEN: the 0.5 GEN seed of the first deployment is stranded on 0x4135EAF1...B01b because Studio Next never executed its emit_transfer payout message; claim_payout settlement remains unverified on Studio Next.",
-    "With a 0.08 GEN seed the 20% epoch cap (0.016 GEN) is below the fixed 0.02 GEN bounty, so the first live report reserved no bounty; the mid-epoch top-up (P03 fix) raised the cap to 0.024 GEN and the second report reserved it.",
-    "Brand registry holds 4 brands (uniswap, opensea, rabby, aave)."
+    "Bounty pool holds only 0.012 GEN (not 0.5 GEN): the earlier seeds are stranded in superseded contracts because Studio Next never executes emitted payout transfers, and the funding accounts were nearly empty. 20% of 0.012 GEN is below the fixed 0.02 GEN bounty, so the live report reserved NO bounty - the net-capital cap and the fresh-vest-window behaviour are verified by tests (695 pytest) and, for the previous build, live; not re-demonstrated live on this build.",
+    "claim_payout settlement remains unverified on Studio Next (emit_transfer message not executed on the first deployment).",
+    "Brand registry holds 2 brands (uniswap, opensea) to conserve fee deposits.",
+    "The readback step hit the RPC's 30 requests/minute limit once; readbacks were re-collected with deploy/readback.ts (paced) and merged here."
   ],
   "tests": {
-    "pytest": "689 passed (tests/)",
-    "vitest": "591 passed (frontend/tests)",
-    "genvm_lint": "check + typecheck: 0 errors, 0 diagnostics on v0.6.0-rc3/rc5/rc6/rc7/rc8 (runner 5jycge...)"
+    "pytest": "695 passed (tests/)",
+    "vitest": "597 passed (frontend/tests)",
+    "genvm_lint": "check + typecheck: 0 errors, 0 diagnostics on v0.6.0-rc3/5/6/7/8"
   }
 }

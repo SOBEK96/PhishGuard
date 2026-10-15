@@ -11,6 +11,7 @@ from tests.conftest import (
     assert_accounting, commit, hexof, mock_feeds, rec, report, send,
 )
 
+MIN_REDEPOSIT = 10**15
 REM = dict(tier=0, status="REMEDIATED", published=REVISED)
 FP = dict(tier=0, status="FALSE_POSITIVE_REVOKED", published=REVISED)
 
@@ -40,10 +41,20 @@ def test_remediated_then_rereported_target_never_strands_reserved_bounty(vm, fun
     assert out == "DISMISSED"
 
     p = funded.get_pool_state()
-    assert p["reserved_bounty"] == "0"                      # nothing stranded
     a = hexof(funded, vm, direct_alice)
-    assert funded.claimable_of(a) == str(BOND + BOUNTY)     # bond (at appeal) + settled bounty
-    assert p["solvent"] is True
+    # nothing stranded: the bounty sits in alice's own vesting entry (same vest time)
+    assert p["reserved_bounty"] == str(BOUNTY)
+    assert funded.get_vest_count() == 1
+    v = funded.get_vest_entry(0)
+    assert v["owner"] == a and v["bounty"] == str(BOUNTY) and v["vest_at"] == NOW + DAY
+    assert funded.claimable_of(a) == str(BOND)              # bond was returned at appeal
+    with vm.expect_revert("ERR_TIMELOCK_ACTIVE"):
+        send(vm, funded, direct_alice, funded.claim_vested, 0)
+    vm.warp("2026-10-16T00:00:00Z")
+    assert send(vm, funded, direct_alice, funded.claim_vested, 0) == str(BOUNTY)
+    p = funded.get_pool_state()
+    assert p["reserved_bounty"] == "0" and p["solvent"] is True
+    assert funded.claimable_of(a) == str(BOND + BOUNTY)
     assert send(vm, funded, direct_alice, funded.claim_payout) == str(BOND + BOUNTY)
 
 
@@ -59,8 +70,10 @@ def test_rereport_that_verifies_settles_prior_and_reserves_new_bounty(vm, funded
     t = funded.get_target_status(TARGET)
     assert t["reporter"] == hexof(funded, vm, direct_charlie)
     assert t["bounty_reserved"] == str(BOUNTY)
-    assert funded.claimable_of(hexof(funded, vm, direct_alice)) == str(BOND + BOUNTY)
-    assert funded.get_pool_state()["reserved_bounty"] == str(BOUNTY)  # exactly the NEW reservation
+    assert funded.claimable_of(hexof(funded, vm, direct_alice)) == str(BOND)
+    # two live reservations: alice's superseded entry + charlie's new one
+    assert funded.get_pool_state()["reserved_bounty"] == str(2 * BOUNTY)
+    assert funded.get_vest_entry(0)["bounty"] == str(BOUNTY)
 
 
 def test_override_active_path_also_settles_prior_reservation(vm, funded, direct_alice, direct_bob, direct_charlie):
@@ -71,9 +84,13 @@ def test_override_active_path_also_settles_prior_reservation(vm, funded, direct_
     stale = rec(tier=2, campaign="stale-replay", published=PUBLISHED - 1)  # older than the override
     mock_feeds(vm, stale, stale, stale)
     assert report(vm, funded, direct_charlie, campaign="stale-replay") == "FALSE_POSITIVE_OVERRIDE_ACTIVE"
-    assert funded.get_pool_state()["reserved_bounty"] == "0"
-    assert funded.get_target_status(TARGET)["bounty_reserved"] == "0"
+    assert funded.get_target_status(TARGET)["bounty_reserved"] == "0"   # record zeroed
+    assert funded.get_pool_state()["reserved_bounty"] == str(BOUNTY)    # ... escrow moved, not lost
+    assert funded.get_vest_entry(0)["bounty"] == str(BOUNTY)
+    vm.warp("2026-10-16T00:00:00Z")
+    send(vm, funded, direct_alice, funded.claim_vested, 0)
     assert funded.claimable_of(hexof(funded, vm, direct_alice)) == str(BOND + BOUNTY)
+    assert funded.get_pool_state()["reserved_bounty"] == "0"
 
 
 def test_fp_revocation_then_rereport_keeps_ledger_exact(vm, funded, direct_alice, direct_bob, direct_charlie):
@@ -181,13 +198,122 @@ def test_deposit_then_withdraw_cannot_inflate_the_cap(vm, pg, direct_alice, dire
     assert int(p["epoch_cap"]) <= 2 * 10**17 * (1000) // (10**18)  # back to ~dust, not 0.2 GEN
 
 
-def test_cap_never_drops_below_amount_already_paid(vm, pg, direct_owner, direct_alice, direct_bob):
+def test_withdrawing_capital_stops_further_bounties_in_the_epoch(vm, pg, direct_owner, direct_alice, direct_bob):
     send(vm, pg, direct_owner, pg.fund_bounty_pool, value=5 * 10**17)
     blacklist(vm, pg, direct_alice, target="paid-drain.com", campaign="paid-camp")
     assert pg.get_pool_state()["epoch_paid"] == str(BOUNTY)
     shares = int(pg.shares_of(hexof(pg, vm, direct_owner)))
     send(vm, pg, direct_owner, pg.withdraw_pool_shares, shares)
-    assert int(pg.get_pool_state()["epoch_cap"]) >= BOUNTY
+    # net capital collapsed to the one escrowed bounty: 20 % of it < one more bounty
+    blacklist(vm, pg, direct_bob, target="late-drain.com", campaign="late-camp")
+    assert pg.get_target_status("late-drain.com")["bounty_reserved"] == "0"
+
+
+# =============================================================================
+# Economic hardening: net-capital cap + immutable vesting
+# =============================================================================
+def test_recycling_same_liquidity_via_deposit_withdraw_cannot_inflate_epoch_cap(
+    vm, pg, direct_owner, direct_alice, direct_bob, direct_charlie
+):
+    """0.5 GEN of real capital may back at most 20 % = 0.1 GEN of bounties per
+    epoch, however often the SAME liquidity is withdrawn and re-deposited.
+    (Before the fix, each withdraw was free once the slack hit its floor and each
+    re-deposit added 20 % again, so recycling 0.4 GEN minted ~0.08 GEN of budget
+    per cycle: nine bounties = 0.18 GEN were reservable from 0.5 GEN.)"""
+    send(vm, pg, direct_owner, pg.fund_bounty_pool, value=5 * 10**17)
+    cap = 10**17
+    assert pg.get_pool_state()["epoch_cap"] == str(cap)
+    reporters = [direct_alice, direct_bob, direct_charlie]
+    for i in range(9):  # 3 reporters x 3 per-reporter epoch bounties
+        blacklist(vm, pg, reporters[i % 3], target=f"cycle-{i}.com", campaign=f"cycle-camp-{i}")
+        free = int(pg.get_pool_state()["bounty_pool"])
+        shares = int(pg.shares_of(hexof(pg, vm, direct_owner)))
+        if shares > 0 and free > MIN_REDEPOSIT:
+            send(vm, pg, direct_owner, pg.withdraw_pool_shares, shares)  # pull every free share out ...
+            send(vm, pg, direct_owner, pg.fund_bounty_pool, value=free)  # ... and put the same GEN back
+    reserved = [int(pg.get_target_status(f"cycle-{i}.com")["bounty_reserved"]) for i in range(9)]
+    assert sum(reserved) <= cap, reserved
+    assert sum(reserved) == cap                      # the honest 20 % budget is still fully usable
+    assert pg.get_pool_state()["reserved_bounty"] == str(sum(reserved))
+    assert pg.get_pool_state()["epoch_paid"] == str(sum(reserved))
+
+
+def test_cap_is_a_pure_function_of_net_capital(vm, pg, direct_owner, direct_alice):
+    send(vm, pg, direct_owner, pg.fund_bounty_pool, value=10**18)
+    assert pg.get_pool_state()["epoch_cap"] == str(2 * 10**17)
+    shares = int(pg.shares_of(hexof(pg, vm, direct_owner)))
+    send(vm, pg, direct_owner, pg.withdraw_pool_shares, shares // 2)
+    assert int(pg.get_pool_state()["epoch_cap"]) <= 10**17 + 200   # half the capital -> half the cap
+    send(vm, pg, direct_owner, pg.withdraw_pool_shares, shares // 2)
+    assert int(pg.get_pool_state()["epoch_cap"]) <= 200            # dead-share dust only
+
+
+def test_reserved_bounty_counts_as_net_capital(vm, pg, direct_owner, direct_alice):
+    send(vm, pg, direct_owner, pg.fund_bounty_pool, value=5 * 10**17)
+    cap_before = pg.get_pool_state()["epoch_cap"]
+    blacklist(vm, pg, direct_alice, target="held-drain.com", campaign="held-camp")
+    assert pg.get_pool_state()["epoch_cap"] == cap_before    # reserving does not shrink the budget
+
+
+def test_rereported_target_cannot_bypass_cooldown_window(vm, funded, direct_alice, direct_bob, direct_charlie):
+    blacklist(vm, funded, direct_alice)                      # alice: vest_at = NOW + 24h
+    r = rec(**REM)
+    mock_feeds(vm, r, r, r)
+    send(vm, funded, direct_bob, funded.appeal_classification, TARGET, value=BOND)
+
+    # 12h later the drainer is back and charlie re-reports it
+    vm.warp("2026-10-15T12:00:00Z")
+    again = rec(tier=2, campaign="relapse-2026q4", published=NOW + 3600)
+    mock_feeds(vm, again, again, again)
+    assert report(vm, funded, direct_charlie, campaign="relapse-2026q4") == "BLACKLISTED"
+    t = funded.get_target_status(TARGET)
+    new_vest = NOW + 12 * 3600 + DAY
+    assert t["vest_at"] == new_vest                          # brand-new, full 24h window
+    assert t["bounty_reserved"] == str(BOUNTY)
+    c = hexof(funded, vm, direct_charlie)
+
+    # alice's superseded escrow keeps her ORIGINAL (earlier) vest time ...
+    assert funded.get_vest_entry(0)["vest_at"] == NOW + DAY
+    # ... and charlie cannot claim before his own window ends, whatever alice's was
+    vm.warp("2026-10-16T00:00:01Z")                          # past alice's vest, before charlie's
+    with vm.expect_revert("ERR_TIMELOCK_ACTIVE"):
+        send(vm, funded, direct_charlie, funded.claim_settlement, TARGET)
+    send(vm, funded, direct_alice, funded.claim_vested, 0)   # alice IS vested
+    vm.warp("2026-10-16T12:00:00Z")
+    assert send(vm, funded, direct_charlie, funded.claim_settlement, TARGET) == str(BOND + BOUNTY)
+    assert funded.claimable_of(c) == str(BOND + BOUNTY)
+
+
+def test_superseded_escrow_cannot_be_claimed_early_or_by_others(vm, funded, direct_alice, direct_bob, direct_charlie):
+    blacklist(vm, funded, direct_alice)
+    r = rec(**REM)
+    mock_feeds(vm, r, r, r)
+    send(vm, funded, direct_bob, funded.appeal_classification, TARGET, value=BOND)
+    mock_feeds(vm, "404", "404", "404")
+    report(vm, funded, direct_charlie, campaign="whatever")   # supersedes the record
+    with vm.expect_revert("ERR_UNAUTHORIZED"):
+        send(vm, funded, direct_charlie, funded.claim_vested, 0)
+    with vm.expect_revert("ERR_TIMELOCK_ACTIVE"):
+        send(vm, funded, direct_alice, funded.claim_vested, 0)
+    with vm.expect_revert("unknown vest entry"):
+        send(vm, funded, direct_alice, funded.claim_vested, 7)
+    vm.warp("2026-10-16T00:00:00Z")
+    send(vm, funded, direct_alice, funded.claim_vested, 0)
+    with vm.expect_revert("ERR_NOTHING_TO_CLAIM"):
+        send(vm, funded, direct_alice, funded.claim_vested, 0)  # no double claim
+
+
+def test_fresh_report_after_fully_vested_prior_has_new_independent_window(vm, funded, direct_alice, direct_bob, direct_charlie):
+    blacklist(vm, funded, direct_alice)
+    r = rec(**REM)
+    mock_feeds(vm, r, r, r)
+    send(vm, funded, direct_bob, funded.appeal_classification, TARGET, value=BOND)
+    vm.warp("2026-10-20T00:00:00Z")                           # alice's window long over
+    t_now = NOW + 5 * DAY
+    again = rec(tier=2, campaign="late-relapse", published=t_now - 3600)
+    mock_feeds(vm, again, again, again)
+    assert report(vm, funded, direct_charlie, campaign="late-relapse") == "BLACKLISTED"
+    assert funded.get_target_status(TARGET)["vest_at"] == t_now + DAY
 
 
 # =============================================================================

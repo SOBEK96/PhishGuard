@@ -10,13 +10,14 @@ import {
   readClient,
   readPool,
   readShares,
+  readVestEntries,
   readTarget,
   readTargetIndex,
   type EthereumProvider,
 } from "./contract";
 import { SerialLoader, type LoaderSnapshot } from "./serialLoader";
 import { clearFor, getFor, normalizeAccount, scope, select, setFor, type Scoped } from "./scoped";
-import type { FeedSource, PoolState, TargetStatus } from "./types";
+import type { FeedSource, PoolState, TargetStatus, VestEntry } from "./types";
 
 export interface TxBanner {
   kind: "pending" | "success" | "error";
@@ -34,6 +35,7 @@ export function useDashboard() {
   const [targets, setTargets] = useState<LoaderSnapshot<TargetStatus> | null>(null);
   const [claimable, setClaimable] = useState<Scoped<string> | null>(null);
   const [shares, setShares] = useState<Scoped<string> | null>(null);
+  const [vest, setVest] = useState<Scoped<VestEntry[]> | null>(null);
   const [banners, setBanners] = useState<Record<string, TxBanner>>({});
   const [poolError, setPoolError] = useState<string | null>(null);
   const [syncedAt, setSyncedAt] = useState<number | null>(null);
@@ -76,6 +78,8 @@ export function useDashboard() {
         if (c !== null && accountRef.current === acct) setClaimable(scope(acct, c));
         const sh = await readShares(client, acct).catch(() => null);
         if (sh !== null && accountRef.current === acct) setShares(scope(acct, sh));
+        const ve = await readVestEntries(client).catch(() => null);
+        if (ve !== null && accountRef.current === acct) setVest(scope(acct, ve));
       }
       setSyncedAt(Date.now());
     } catch (e) {
@@ -113,6 +117,7 @@ export function useDashboard() {
       setAccount(next);
       setClaimable(null);
       setShares(null);
+      setVest(null);
       setBanners({});
       if (next) void refresh();
     };
@@ -146,6 +151,7 @@ export function useDashboard() {
     setAccount(next);
     setClaimable(null);
     setShares(null);
+    setVest(null);
     void refresh();
   }, [refresh]);
 
@@ -165,6 +171,7 @@ export function useDashboard() {
     targets,
     claimable: select(claimable, account, "0"),
     shares: select(shares, account, "0"),
+    vestEntries: select(vest, account, [] as VestEntry[]),
     pin,
     banner: getFor(banners, account) ?? null,
     poolError,

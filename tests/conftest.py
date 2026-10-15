@@ -106,14 +106,19 @@ def send(vm, c, who, fn, *args, value=0):
 
 def assert_accounting(c) -> None:
     """Strict ledger invariants, checked after EVERY write made through `send`:
-    reserved_bounty == sum(target.bounty_reserved) and
-    held_bonds == sum(target.bond_held), and the vault never over-promises."""
+    reserved_bounty == sum(target.bounty_reserved) + sum(vest_entry.bounty) and
+    held_bonds == sum(target.bond_held) + sum(vest_entry.bond); the vault never over-promises."""
     n = int(c.get_target_count())
     reserved = held = 0
     for i in range(n):
         t = c.get_target_status(c.get_target_id_by_index(i))
         reserved += int(t["bounty_reserved"])
         held += int(t["bond_held"])
+    # escrow superseded by a re-report lives in its own vesting entries
+    for i in range(int(c.get_vest_count())):
+        v = c.get_vest_entry(i)
+        reserved += int(v["bounty"])
+        held += int(v["bond"])
     p = c.get_pool_state()
     assert int(p["reserved_bounty"]) == reserved, f"reserved_bounty {p['reserved_bounty']} != sum {reserved}"
     assert int(p["held_bonds"]) == held, f"held_bonds {p['held_bonds']} != sum {held}"

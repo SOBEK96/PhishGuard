@@ -7,7 +7,7 @@
  */
 import { CHAIN_ID, CONTRACT_ADDRESS, RPC_URL } from "./deployment";
 import { assertReceipt, type ReceiptVerdict } from "./receipt";
-import { parseFeeds, parsePool, parseSafety, parseTarget } from "./parse";
+import { parseFeeds, parsePool, parseSafety, parseTarget, parseVestEntry } from "./parse";
 import {
   commitment,
   isValidLabel,
@@ -15,7 +15,7 @@ import {
   validateReport,
   type Attributes,
 } from "./validation";
-import type { FeedSource, PoolState, SafetyCheck, TargetStatus } from "./types";
+import type { FeedSource, PoolState, SafetyCheck, TargetStatus, VestEntry } from "./types";
 
 type Hex = `0x${string}`;
 // The SDK client is large and structurally typed by viem; we only use a narrow slice.
@@ -98,6 +98,15 @@ export async function readClaimable(client: SdkClient, owner: string): Promise<s
   return v;
 }
 
+export async function readVestEntries(client: SdkClient, limit = 50): Promise<VestEntry[]> {
+  const count = Number(await call(client, "get_vest_count"));
+  const out: VestEntry[] = [];
+  for (let i = Math.max(0, count - limit); i < count; i++) {
+    out.push(parseVestEntry(await call(client, "get_vest_entry", [BigInt(i)])));
+  }
+  return out;
+}
+
 export async function readShares(client: SdkClient, owner: string): Promise<string> {
   const v = await call(client, "shares_of", [owner.toLowerCase()]);
   if (typeof v !== "string" || !/^\d+$/.test(v)) throw new Error("shares: bad shape");
@@ -162,6 +171,11 @@ export async function claimPayout(account: string, onHash?: (h: string) => void)
 export async function fundPool(account: string, valueWei: bigint, onHash?: (h: string) => void) {
   if (valueWei <= 0n) throw new Error("Deposit must be greater than zero.");
   return sendWrite(account, "fund_bounty_pool", [], valueWei, onHash);
+}
+
+export async function claimVested(account: string, entryId: number, onHash?: (h: string) => void) {
+  if (!Number.isSafeInteger(entryId) || entryId < 0) throw new Error("invalid vest entry id");
+  return sendWrite(account, "claim_vested", [BigInt(entryId)], 0n, onHash);
 }
 
 export async function withdrawShares(account: string, shareAmount: bigint, onHash?: (h: string) => void) {
