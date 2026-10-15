@@ -1,0 +1,11 @@
+{
+  "brand_id": "rabby",
+  "campaign_id": "typosquat-rabby-2026q4",
+  "evidence_hash": "f20396cac96da1d93b16ab4bc5d581f6ba686900ab4b4690d38697e828d9f87e",
+  "feed": "independent-cert-mirror",
+  "first_seen_ts": 1790400000,
+  "published_ts": 1790500100,
+  "status": "ACTIVE",
+  "target_id": "rabby-wallet-verify.xyz",
+  "tier": 1
+}

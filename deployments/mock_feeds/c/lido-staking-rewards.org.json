@@ -1,0 +1,11 @@
+{
+  "brand_id": "lido",
+  "campaign_id": "fp-revoked-2026q4",
+  "evidence_hash": "9b86d2851d15a2855569b61c17899499973a088a6f234d37e070ad24183732f6",
+  "feed": "open-threat-exchange",
+  "first_seen_ts": 1790800000,
+  "published_ts": 1790900200,
+  "status": "FALSE_POSITIVE_REVOKED",
+  "target_id": "lido-staking-rewards.org",
+  "tier": 0
+}

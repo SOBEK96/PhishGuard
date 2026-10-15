@@ -1,0 +1,11 @@
+{
+  "brand_id": "aave",
+  "campaign_id": "mixed-tier-2026q4",
+  "evidence_hash": "0020fb0f623e1f636bc4fcb9e567010d0b66599261b2017ce7aed49c3316eb15",
+  "feed": "phishguard-primary",
+  "first_seen_ts": 1790600000,
+  "published_ts": 1790700000,
+  "status": "ACTIVE",
+  "target_id": "aave-rewards-claim.app",
+  "tier": 1
+}

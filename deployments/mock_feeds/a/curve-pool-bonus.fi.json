@@ -1,0 +1,11 @@
+{
+  "brand_id": "curve",
+  "campaign_id": "remediated-2026q4",
+  "evidence_hash": "98b7a36bb15f03e8eb7277323cd51177ec9c721e94e9fb0fe8892973dc34b2a8",
+  "feed": "phishguard-primary",
+  "first_seen_ts": 1791000000,
+  "published_ts": 1791100000,
+  "status": "REMEDIATED",
+  "target_id": "curve-pool-bonus.fi",
+  "tier": 0
+}

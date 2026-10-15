@@ -1,0 +1,11 @@
+{
+  "brand_id": "ens",
+  "campaign_id": "benign-2026q4",
+  "evidence_hash": "72f5586179818a36f2f8f2845b44d2add791758e2563e64f757db12b0027db9d",
+  "feed": "independent-cert-mirror",
+  "first_seen_ts": 1791200000,
+  "published_ts": 1791300100,
+  "status": "ACTIVE",
+  "target_id": "docs.ens-benign-example.org",
+  "tier": 0
+}

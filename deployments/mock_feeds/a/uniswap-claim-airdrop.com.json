@@ -1,0 +1,11 @@
+{
+  "brand_id": "uniswap",
+  "campaign_id": "permit2-airdrop-2026q4",
+  "evidence_hash": "e703e5c6ef0cf8d1a358411cb4bd4143ec312adbc6e74b569e85e91d29b98e47",
+  "feed": "phishguard-primary",
+  "first_seen_ts": 1790000000,
+  "published_ts": 1790100000,
+  "status": "ACTIVE",
+  "target_id": "uniswap-claim-airdrop.com",
+  "tier": 2
+}

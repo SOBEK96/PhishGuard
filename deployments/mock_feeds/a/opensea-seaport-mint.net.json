@@ -1,0 +1,11 @@
+{
+  "brand_id": "opensea",
+  "campaign_id": "seaport-hijack-2026q4",
+  "evidence_hash": "a0b0ef95c963dac801a08651d6be516c91d824d641171ab652553fa8d09c8eef",
+  "feed": "phishguard-primary",
+  "first_seen_ts": 1790200000,
+  "published_ts": 1790300000,
+  "status": "ACTIVE",
+  "target_id": "opensea-seaport-mint.net",
+  "tier": 2
+}
