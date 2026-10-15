@@ -1,0 +1,226 @@
+{
+  "network": "studio-next",
+  "chain_id": 61997,
+  "rpc_url": "https://studio-next.genlayer.com/api",
+  "explorer_url": "https://explorer-studio-next.genlayer.com/address/0x5Ecc98535e3EBBbC965f72ee8C3E411c402CE8DB",
+  "contract_address": "0x5Ecc98535e3EBBbC965f72ee8C3E411c402CE8DB",
+  "deployer_address": "0xE6d38f463c03b2B9fB42a9D565c69a1ddc283964",
+  "reporter_address": "0xfc35738E3c8dA590E1Fe0006E25FD031f93df246",
+  "source": "contracts/phish_guard.py",
+  "source_sha256": "1336df9c8a3dbc055672e96938d46d9d7885835410262d21536ae7479b1169c8",
+  "deployed_code_sha256": "1336df9c8a3dbc055672e96938d46d9d7885835410262d21536ae7479b1169c8",
+  "feed_pin": {
+    "repo": "https://github.com/SOBEK96/PhishGuard",
+    "commit": "7f7173bf44bc1b868733978b9675882b9f6ac7f8",
+    "feeds": {
+      "a": {
+        "url": "https://raw.githubusercontent.com/SOBEK96/PhishGuard/7f7173bf44bc1b868733978b9675882b9f6ac7f8/deployments/mock_feeds/a/",
+        "operator": "github.com"
+      },
+      "b": {
+        "url": "https://cdn.jsdelivr.net/gh/SOBEK96/PhishGuard@7f7173bf44bc1b868733978b9675882b9f6ac7f8/deployments/mock_feeds/b/",
+        "operator": "jsdelivr.com"
+      },
+      "c": {
+        "url": "https://raw.githack.com/SOBEK96/PhishGuard/7f7173bf44bc1b868733978b9675882b9f6ac7f8/deployments/mock_feeds/c/",
+        "operator": "githack.com"
+      }
+    }
+  },
+  "seed_wei": "100000000000000000",
+  "live_target": {
+    "target_id": "uniswap-claim-airdrop.com",
+    "campaign_id": "permit2-airdrop-2026q4",
+    "brand_id": "uniswap",
+    "first_seen_ts": 1790000000,
+    "evidence_hash": "e703e5c6ef0cf8d1a358411cb4bd4143ec312adbc6e74b569e85e91d29b98e47"
+  },
+  "deployed_at": "2026-10-15T15:03:55.963Z",
+  "transactions": [
+    {
+      "step": "deploy",
+      "hash": "0xf04e86a9456a2b660182760d6d9a7861b0540353f1c8b0c29f36806e74476305",
+      "label": "deploy",
+      "statusName": "ACCEPTED",
+      "exec": "FINISHED_WITH_RETURN",
+      "result": "MAJORITY_AGREE",
+      "status": 5,
+      "txExecutionResult": 1
+    },
+    {
+      "step": "register_brand:uniswap",
+      "hash": "0x3de1c3254d56e59a28ec39a87ed9d884904d3a9cadcaa876bc97d4bffc7fa8be",
+      "label": "register_brand",
+      "statusName": "ACCEPTED",
+      "exec": "FINISHED_WITH_RETURN",
+      "result": "MAJORITY_AGREE",
+      "status": 5,
+      "txExecutionResult": 1
+    },
+    {
+      "step": "register_brand:opensea",
+      "hash": "0x1a67f0734b94f05907016b2033862b5d81446526bbf0dd4c951f5c83d59f83a3",
+      "label": "register_brand",
+      "statusName": "ACCEPTED",
+      "exec": "FINISHED_WITH_RETURN",
+      "result": "MAJORITY_AGREE",
+      "status": 5,
+      "txExecutionResult": 1
+    },
+    {
+      "step": "register_brand:rabby",
+      "hash": "0x13ecb1e22dc58253f682ea6d948ba9e33164addf2e131ec45605467503e77b50",
+      "label": "register_brand",
+      "statusName": "ACCEPTED",
+      "exec": "FINISHED_WITH_RETURN",
+      "result": "MAJORITY_AGREE",
+      "status": 5,
+      "txExecutionResult": 1
+    },
+    {
+      "step": "register_brand:aave",
+      "hash": "0x3b6d4a32fa47ccf2db6896e0a6ccca38be32d6168ceb6da9cfe67dcb32d2ee6c",
+      "label": "register_brand",
+      "statusName": "ACCEPTED",
+      "exec": "FINISHED_WITH_RETURN",
+      "result": "MAJORITY_AGREE",
+      "status": 5,
+      "txExecutionResult": 1
+    },
+    {
+      "step": "fund_bounty_pool(100000000000000000 wei)",
+      "hash": "0x8f08de485412798406385fc2a5a01868a477fcffc4a1aa499dfc7c39465bb0b8",
+      "label": "fund_bounty_pool",
+      "statusName": "ACCEPTED",
+      "exec": "FINISHED_WITH_RETURN",
+      "result": "MAJORITY_AGREE",
+      "status": 5,
+      "txExecutionResult": 1
+    },
+    {
+      "step": "report_target(0.01 GEN bond)",
+      "hash": "0x59a0d7ad95d726e698307aeac3e96fb7de5d3957db197c2b7a6f56d9d2ccfbf9",
+      "label": "report_target",
+      "statusName": "ACCEPTED",
+      "exec": "FINISHED_WITH_RETURN",
+      "result": "MAJORITY_AGREE",
+      "status": 5,
+      "txExecutionResult": 1
+    }
+  ],
+  "readbacks": {
+    "get_pool_state": {
+      "balance": "110000000000000000",
+      "bounty_pool": "80000000000000000",
+      "cooldown_window": 86400,
+      "epoch": 2963,
+      "epoch_cap": "20000000000000000",
+      "epoch_paid": "20000000000000000",
+      "feed_timelock": 604800,
+      "held_bonds": "10000000000000000",
+      "locked_slash_reserve": "0",
+      "max_epoch_bounty_bps": 2000,
+      "min_appeal_bond": "10000000000000000",
+      "min_report_bond": "10000000000000000",
+      "quarantine_watch": 172800,
+      "reserved_bounty": "20000000000000000",
+      "solvent": true,
+      "target_count": 1,
+      "tier2_bounty": "20000000000000000",
+      "total_claimable": "0",
+      "total_reports": 1,
+      "total_shares": "100000000000000000"
+    },
+    "get_target_status": {
+      "bond_amount": "10000000000000000",
+      "bond_held": "10000000000000000",
+      "bounty_reserved": "20000000000000000",
+      "brand_id": "uniswap",
+      "campaign_id": "permit2-airdrop-2026q4",
+      "evidence_hash": "e703e5c6ef0cf8d1a358411cb4bd4143ec312adbc6e74b569e85e91d29b98e47",
+      "first_seen_ts": 1790000000,
+      "known": true,
+      "override_ts": 0,
+      "published_ts": 1790100000,
+      "quarantine_until": 0,
+      "report_ts": 1792076620,
+      "reporter": "0xfc35738e3c8da590e1fe0006e25fd031f93df246",
+      "resolutions": 1,
+      "source_count": 3,
+      "status": "BLACKLISTED",
+      "target_id": "uniswap-claim-airdrop.com",
+      "tier": 2,
+      "tier_name": "TIER_2_DRAINER",
+      "vest_at": 1792163020
+    },
+    "get_feed_sources": [
+      {
+        "base_url": "https://raw.githubusercontent.com/SOBEK96/PhishGuard/7f7173bf44bc1b868733978b9675882b9f6ac7f8/deployments/mock_feeds/a/",
+        "host": "raw.githubusercontent.com",
+        "operator": "github.com",
+        "slot": "A",
+        "staged_host": "",
+        "staged_operator": "",
+        "staged_ready_at": 0,
+        "staged_url": ""
+      },
+      {
+        "base_url": "https://cdn.jsdelivr.net/gh/SOBEK96/PhishGuard@7f7173bf44bc1b868733978b9675882b9f6ac7f8/deployments/mock_feeds/b/",
+        "host": "cdn.jsdelivr.net",
+        "operator": "jsdelivr.com",
+        "slot": "B",
+        "staged_host": "",
+        "staged_operator": "",
+        "staged_ready_at": 0,
+        "staged_url": ""
+      },
+      {
+        "base_url": "https://raw.githack.com/SOBEK96/PhishGuard/7f7173bf44bc1b868733978b9675882b9f6ac7f8/deployments/mock_feeds/c/",
+        "host": "raw.githack.com",
+        "operator": "githack.com",
+        "slot": "C",
+        "staged_host": "",
+        "staged_operator": "",
+        "staged_ready_at": 0,
+        "staged_url": ""
+      }
+    ],
+    "check_transaction_safety": {
+      "blocked": true,
+      "known": true,
+      "quarantine_until": 0,
+      "status": "BLACKLISTED",
+      "target_id": "uniswap-claim-airdrop.com",
+      "tier": 2,
+      "tier_name": "TIER_2_DRAINER",
+      "verdict": "BLOCK",
+      "warn": false
+    },
+    "get_governor": "0xe6d38f463c03b2b9fb42a9d565c69a1ddc283964",
+    "get_brand_uniswap": "app.uniswap.org"
+  },
+  "faucet": {
+    "attempt": "sim_fundAccount(0xe6d3\u2026, 1 GEN) and (0xfc35\u2026, 1 GEN) returned tx hashes but both balances stayed 0",
+    "fallback": "deployer topped up 0.39 GEN from aetherclaim-admin and 0.13 GEN from aetherclaim-farmer; reporter 0.04 GEN from aetherclaim-farmer (existing unlocked CLI accounts, as authorized)"
+  },
+  "deviations": [
+    "Bounty pool seeded with 0.1 GEN, not 0.5 GEN: the first deployment's 0.5 GEN seed was withdrawn via claim_payout, and Studio Next never executed the emitted emit_transfer message (tx finalized, triggered_transactions empty, value still on the superseded contract). It is not reachable by design (no admin sweep).",
+    "Brand registry holds 4 brands (uniswap, opensea, rabby, aave) to conserve fee deposits."
+  ],
+  "superseded_deployments": [
+    {
+      "contract_address": "0x4135EAF178de1cD239b3a4c5399Cc6148867B01b",
+      "source_sha256": "da92ac18199b147d02ca455a1e0d38ff0aec23712edb5fb39163e0358241057d",
+      "deploy_tx": "0x9667d116ac722ca077a4bba32ecaf08e48576ac221bde5a79e8d3811b5220c68",
+      "withdraw_pool_shares_tx": "0x9f8ea0a28c9d782f2c84e30f5b6c8b013012e9e5a6bf2d24f6e57a6c4d7494f7",
+      "claim_payout_tx": "0x8c0de1d14f4123bacd3ea314a7b86fa9f265b32c979c580f130622baa21fd31d",
+      "reason": "report_target hard-reverted on first_seen_ts > now, which fails SDK fee simulation (simulation clock != block clock). Fixed in the current source (bounty gate instead of revert).",
+      "stranded_balance_wei": "500000000000000000"
+    }
+  ],
+  "tests": {
+    "pytest": "570 passed (tests/)",
+    "vitest": "450 passed (frontend/tests)",
+    "genvm_lint": "check + typecheck pass (GENVM_VERSION=v0.6.0-rc7)"
+  }
+}

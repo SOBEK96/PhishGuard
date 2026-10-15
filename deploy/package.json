@@ -1,0 +1,18 @@
+{
+  "name": "phishguard-deploy",
+  "private": true,
+  "type": "module",
+  "description": "Autonomous Studio Next deploy + seed + live report + readback for PhishGuard",
+  "scripts": {
+    "deploy": "tsx deploy_phish_guard.ts"
+  },
+  "dependencies": {
+    "ethers": "6.13.4",
+    "genlayer-js": "2.0.0-rc.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "tsx": "4.19.2",
+    "typescript": "5.7.2"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "phishguard-soc-console",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tactical cyber-defense SOC console for the PhishGuard GenLayer anti-phishing oracle",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "lint": "eslint --max-warnings 0 .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "genlayer-js": "2.0.0-rc.1",
+    "lucide-react": "^1.57.0",
+    "next": "16.4.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.39.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~5.9.0",
+    "typescript-eslint": "^8.71.2",
+    "vitest": "^5.0.4"
+  }
+}

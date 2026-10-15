@@ -1,0 +1,332 @@
+{
+  "ctor": {
+    "params": [
+      [
+        "url_a",
+        "string"
+      ],
+      [
+        "operator_a",
+        "string"
+      ],
+      [
+        "url_b",
+        "string"
+      ],
+      [
+        "operator_b",
+        "string"
+      ],
+      [
+        "url_c",
+        "string"
+      ],
+      [
+        "operator_c",
+        "string"
+      ]
+    ],
+    "kwparams": {}
+  },
+  "methods": {
+    "activate_feed": {
+      "params": [
+        [
+          "slot",
+          "int"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": false,
+      "ret": "null",
+      "payable": false
+    },
+    "appeal_classification": {
+      "params": [
+        [
+          "target_id",
+          "string"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": false,
+      "ret": "string",
+      "payable": true
+    },
+    "assert_target_safe": {
+      "params": [
+        [
+          "target_id",
+          "string"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": true,
+      "ret": "string"
+    },
+    "cancel_staged_feed": {
+      "params": [
+        [
+          "slot",
+          "int"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": false,
+      "ret": "null",
+      "payable": false
+    },
+    "check_transaction_safety": {
+      "params": [
+        [
+          "target_id",
+          "string"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": true,
+      "ret": "dict"
+    },
+    "claim_payout": {
+      "params": [],
+      "kwparams": {},
+      "readonly": false,
+      "ret": "string",
+      "payable": false
+    },
+    "claim_settlement": {
+      "params": [
+        [
+          "target_id",
+          "string"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": false,
+      "ret": "string",
+      "payable": false
+    },
+    "claimable_of": {
+      "params": [
+        [
+          "owner_hex",
+          "string"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": true,
+      "ret": "string"
+    },
+    "compute_commitment": {
+      "params": [
+        [
+          "target_id",
+          "string"
+        ],
+        [
+          "campaign_id",
+          "string"
+        ],
+        [
+          "brand_id",
+          "string"
+        ],
+        [
+          "first_seen_ts",
+          "int"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": true,
+      "ret": "string"
+    },
+    "fund_bounty_pool": {
+      "params": [],
+      "kwparams": {},
+      "readonly": false,
+      "ret": "string",
+      "payable": true
+    },
+    "get_brand": {
+      "params": [
+        [
+          "brand_id",
+          "string"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": true,
+      "ret": "string"
+    },
+    "get_feed_sources": {
+      "params": [],
+      "kwparams": {},
+      "readonly": true,
+      "ret": "array"
+    },
+    "get_governor": {
+      "params": [],
+      "kwparams": {},
+      "readonly": true,
+      "ret": "string"
+    },
+    "get_pool_state": {
+      "params": [],
+      "kwparams": {},
+      "readonly": true,
+      "ret": "dict"
+    },
+    "get_target_count": {
+      "params": [],
+      "kwparams": {},
+      "readonly": true,
+      "ret": "int"
+    },
+    "get_target_id_by_index": {
+      "params": [
+        [
+          "index",
+          "int"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": true,
+      "ret": "string"
+    },
+    "get_target_status": {
+      "params": [
+        [
+          "target_id",
+          "string"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": true,
+      "ret": "dict"
+    },
+    "recycle_slash_reserve": {
+      "params": [],
+      "kwparams": {},
+      "readonly": false,
+      "ret": "string",
+      "payable": false
+    },
+    "reevaluate_target": {
+      "params": [
+        [
+          "target_id",
+          "string"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": false,
+      "ret": "string",
+      "payable": false
+    },
+    "register_brand": {
+      "params": [
+        [
+          "brand_id",
+          "string"
+        ],
+        [
+          "official_domain",
+          "string"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": false,
+      "ret": "null",
+      "payable": false
+    },
+    "report_target": {
+      "params": [
+        [
+          "target_id",
+          "string"
+        ],
+        [
+          "evidence_hash",
+          "string"
+        ],
+        [
+          "campaign_id",
+          "string"
+        ],
+        [
+          "brand_id",
+          "string"
+        ],
+        [
+          "first_seen_ts",
+          "int"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": false,
+      "ret": "string",
+      "payable": true
+    },
+    "shares_of": {
+      "params": [
+        [
+          "owner_hex",
+          "string"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": true,
+      "ret": "string"
+    },
+    "stage_feed": {
+      "params": [
+        [
+          "slot",
+          "int"
+        ],
+        [
+          "base_url",
+          "string"
+        ],
+        [
+          "operator",
+          "string"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": false,
+      "ret": "int",
+      "payable": false
+    },
+    "transfer_governor": {
+      "params": [
+        [
+          "new_governor_hex",
+          "string"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": false,
+      "ret": "null",
+      "payable": false
+    },
+    "whoami": {
+      "params": [],
+      "kwparams": {},
+      "readonly": true,
+      "ret": "string"
+    },
+    "withdraw_pool_shares": {
+      "params": [
+        [
+          "share_amount",
+          "int"
+        ]
+      ],
+      "kwparams": {},
+      "readonly": false,
+      "ret": "string",
+      "payable": false
+    }
+  }
+}
