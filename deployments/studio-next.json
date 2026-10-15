@@ -2,13 +2,13 @@
   "network": "studio-next",
   "chain_id": 61997,
   "rpc_url": "https://studio-next.genlayer.com/api",
-  "explorer_url": "https://explorer-studio-next.genlayer.com/address/0x07d4631B39CD5817f28C2Aff0f28B58f34911077",
-  "contract_address": "0x07d4631B39CD5817f28C2Aff0f28B58f34911077",
+  "explorer_url": "https://explorer-studio-next.genlayer.com/address/0x49EC7a7bDBD93d26f81b019310041C523d4E4717",
+  "contract_address": "0x49EC7a7bDBD93d26f81b019310041C523d4E4717",
   "deployer_address": "0xE6d38f463c03b2B9fB42a9D565c69a1ddc283964",
   "reporter_address": "0xfc35738E3c8dA590E1Fe0006E25FD031f93df246",
   "source": "contracts/phish_guard.py",
-  "source_sha256": "2d882b08fccb1a2daebdb19cd9d19799e79784e6d76969508959d76d72cf883e",
-  "deployed_code_sha256": "2d882b08fccb1a2daebdb19cd9d19799e79784e6d76969508959d76d72cf883e",
+  "source_sha256": "bb1082bbc4a9f28e699c4a077e03ecbd04673d62bdd2f3e0dc4b5c1433b6d5f2",
+  "deployed_code_sha256": "bb1082bbc4a9f28e699c4a077e03ecbd04673d62bdd2f3e0dc4b5c1433b6d5f2",
   "feed_pin": {
     "repo": "https://github.com/SOBEK96/PhishGuard",
     "commit": "7f7173bf44bc1b868733978b9675882b9f6ac7f8",
@@ -27,7 +27,7 @@
       }
     }
   },
-  "seed_wei": "12000000000000000",
+  "seed_wei": "70000000000000000",
   "live_target": {
     "target_id": "uniswap-claim-airdrop.com",
     "campaign_id": "permit2-airdrop-2026q4",
@@ -35,46 +35,66 @@
     "first_seen_ts": 1790000000,
     "evidence_hash": "e703e5c6ef0cf8d1a358411cb4bd4143ec312adbc6e74b569e85e91d29b98e47"
   },
-  "deployed_at": "2026-10-15T16:47:10.588158Z",
+  "deployed_at": "2026-10-15T18:02:22.640Z",
   "transactions": [
     {
       "step": "deploy",
-      "hash": "0xb67635de53005499ddbb3bb0b9f206b306422eda1c79e40badcde4c8caccca72",
+      "hash": "0xd6e755d1cf92df40592f05dc10f74562668b80a8e41d03068b9a7e96ee06bb3e",
+      "label": "deploy",
       "statusName": "ACCEPTED",
-      "result": "MAJORITY_AGREE"
+      "exec": "FINISHED_WITH_RETURN",
+      "result": "MAJORITY_AGREE",
+      "status": 5,
+      "txExecutionResult": 1
     },
     {
       "step": "register_brand:uniswap",
-      "hash": "0x859d6a5ba551b2c4fd76505a254c372188e249a7b2fd75ed9331b7cfa3d7bff0",
+      "hash": "0x371cff0667066eebf372c2ffe4747388725e21649e69eca2b05496147d9fd1a5",
+      "label": "register_brand",
       "statusName": "ACCEPTED",
-      "result": "MAJORITY_AGREE"
+      "exec": "FINISHED_WITH_RETURN",
+      "result": "MAJORITY_AGREE",
+      "status": 5,
+      "txExecutionResult": 1
     },
     {
       "step": "register_brand:opensea",
-      "hash": "0x89edbb5a0736331944c067aa71833a56855421cf3d144475c595451584fa224c",
+      "hash": "0x1fd94ab8fe4534706a0540bcd50531b5ddc4583ea58fb14728ea6ed1149efe85",
+      "label": "register_brand",
       "statusName": "ACCEPTED",
-      "result": "MAJORITY_AGREE"
+      "exec": "FINISHED_WITH_RETURN",
+      "result": "MAJORITY_AGREE",
+      "status": 5,
+      "txExecutionResult": 1
     },
     {
-      "step": "fund_bounty_pool(12000000000000000 wei)",
-      "hash": "0x32f9098eb0a786182eb029f6650114e276328a6770f6e10a400f056b1d4123c1",
+      "step": "fund_bounty_pool(70000000000000000 wei)",
+      "hash": "0x4db25ace306ead69d371f8ba8b2d0ab67d24cff5635cc0f87c438c8ef738732d",
+      "label": "fund_bounty_pool",
       "statusName": "ACCEPTED",
-      "result": "MAJORITY_AGREE"
+      "exec": "FINISHED_WITH_RETURN",
+      "result": "MAJORITY_AGREE",
+      "status": 5,
+      "txExecutionResult": 1
     },
     {
       "step": "report_target(0.01 GEN bond)",
-      "hash": "0x37020a3c3388faefcf5135cd660d5cd21845d110aff9b54c2b9a4280280b4c5c",
+      "hash": "0xcd8ec346d2671a3f3656ea07763a5281877b93671500e6091f1fdd1d8b08c1b8",
+      "label": "report_target",
       "statusName": "ACCEPTED",
-      "result": "MAJORITY_AGREE"
+      "exec": "FINISHED_WITH_RETURN",
+      "result": "MAJORITY_AGREE",
+      "status": 5,
+      "txExecutionResult": 1
     }
   ],
   "readbacks": {
     "get_pool_state": {
-      "balance": "22000000000000000",
-      "bounty_pool": "12000000000000000",
+      "balance": "80000000000000000",
+      "bounty_pool": "70000000000000000",
       "cooldown_window": 86400,
       "epoch": 2963,
-      "epoch_cap": "2400000000000000",
+      "epoch_cap": "14000000000000000",
       "epoch_paid": "0",
       "feed_timelock": 604800,
       "held_bonds": "10000000000000000",
@@ -89,7 +109,7 @@
       "tier2_bounty": "20000000000000000",
       "total_claimable": "0",
       "total_reports": 1,
-      "total_shares": "12000000000000000"
+      "total_shares": "70000000000000000"
     },
     "get_target_status": {
       "bond_amount": "10000000000000000",
@@ -107,7 +127,7 @@
       "override_ts": 0,
       "published_ts": 1790100000,
       "quarantine_until": 0,
-      "report_ts": 1792082727,
+      "report_ts": 1792087290,
       "reporter": "0xfc35738e3c8da590e1fe0006e25fd031f93df246",
       "resolutions": 1,
       "source_count": 3,
@@ -115,7 +135,7 @@
       "target_id": "uniswap-claim-airdrop.com",
       "tier": 2,
       "tier_name": "TIER_2_DRAINER",
-      "vest_at": 1792169127
+      "vest_at": 1792173690
     },
     "get_feed_sources": [
       {
@@ -227,19 +247,15 @@
       "verdict": "ALLOW",
       "warn": false
     },
-    "assert_target_safe_exact": {
-      "reverted": true,
-      "error": "Details: execution failed Version: viem@2.57.7"
-    },
     "assert_target_safe_subdomain": {
       "reverted": true,
-      "error": "Details: execution failed Version: viem@2.57.7"
+      "error": "Missing or invalid parameters.\nDouble check you have provided the correct parameters.\n\nDetails: execution failed\nVersion: viem@2.57.7"
     },
-    "get_vest_count": 0,
-    "get_governor": "0xe6d38f463c03b2b9fb42a9d565c69a1ddc283964"
+    "get_governor": "0xe6d38f463c03b2b9fb42a9d565c69a1ddc283964",
+    "get_brand_uniswap": "app.uniswap.org"
   },
   "faucet": {
-    "attempt": "sim_fundAccount(0xe6d3…, 1 GEN) and (0xfc35…, 1 GEN) returned tx hashes but both balances stayed 0",
+    "attempt": "sim_fundAccount(0xe6d3\u2026, 1 GEN) and (0xfc35\u2026, 1 GEN) returned tx hashes but both balances stayed 0",
     "fallback": "deployer topped up 0.39 GEN from aetherclaim-admin and 0.13 GEN from aetherclaim-farmer; reporter 0.04 GEN from aetherclaim-farmer (existing unlocked CLI accounts, as authorized)"
   },
   "superseded_deployments": [
@@ -265,17 +281,24 @@
       "deploy_tx": "0x79aa13e0f15261269903797bb834166b0adf988c1a4284178e5cb5d3c6ccc7cc",
       "reason": "f8434bd: epoch cap tracked deposit/withdraw deltas (recycling inflated it: 0.18 GEN reservable from 0.5 GEN) and a re-report paid the prior cycle's unvested bounty out immediately",
       "state": "left live and untouched; holds 0.12 GEN pool, two blacklisted targets"
+    },
+    {
+      "contract_address": "0x07d4631B39CD5817f28C2Aff0f28B58f34911077",
+      "source_sha256": "2d882b08fccb1a2daebdb19cd9d19799e79784e6d76969508959d76d72cf883e",
+      "deploy_tx": "0xb67635de53005499ddbb3bb0b9f206b306422eda1c79e40badcde4c8caccca72",
+      "reason": "e9e2052: a single confirmation next to 404s was dismissed and the honest reporter's bond slashed (CDN lag)",
+      "state": "left live and untouched"
     }
   ],
   "deviations": [
-    "Bounty pool holds only 0.012 GEN (not 0.5 GEN): the earlier seeds are stranded in superseded contracts because Studio Next never executes emitted payout transfers, and the funding accounts were nearly empty. 20% of 0.012 GEN is below the fixed 0.02 GEN bounty, so the live report reserved NO bounty - the net-capital cap and the fresh-vest-window behaviour are verified by tests (695 pytest) and, for the previous build, live; not re-demonstrated live on this build.",
-    "claim_payout settlement remains unverified on Studio Next (emit_transfer message not executed on the first deployment).",
-    "Brand registry holds 2 brands (uniswap, opensea) to conserve fee deposits.",
-    "The readback step hit the RPC's 30 requests/minute limit once; readbacks were re-collected with deploy/readback.ts (paced) and merged here."
+    "Pool is 0.07 GEN, not 0.5 GEN: earlier seeds are stranded in superseded contracts (Studio Next never executed their emitted payout transfers). 20% of 0.07 GEN is below the fixed 0.02 GEN bounty, so the live report reserved no bounty.",
+    "The lag rule (1 confirmation + 404/outage -> QUORUM_FAILURE) is verified by tests (720 pytest incl. a 216-combination oracle), not live: demonstrating it needs a fixture present in only ONE pinned feed, and the feeds are pinned to commit 7f7173b (rotation is behind a 7-day timelock).",
+    "claim_payout settlement remains unverified on Studio Next.",
+    "2 brands registered (uniswap, opensea) to conserve fee deposits."
   ],
   "tests": {
-    "pytest": "695 passed (tests/)",
-    "vitest": "597 passed (frontend/tests)",
+    "pytest": "720 passed (tests/)",
+    "vitest": "612 passed (frontend/tests)",
     "genvm_lint": "check + typecheck: 0 errors, 0 diagnostics on v0.6.0-rc3/5/6/7/8"
   }
 }

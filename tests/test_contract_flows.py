@@ -254,10 +254,14 @@ def test_reevaluate_requires_quarantined_target(vm, funded, direct_alice):
     ("rec", "badjson", "404"),  # schema error counts as outage
     ("rec", "html", "429"),
     ("404", "500", "500"),
+    ("rec", "404", "404"),      # lag rule: ONE confirmation + two lagging feeds
+    ("404", "rec", "404"),
+    ("rec", "safe", "404"),     # one confirms, one says safe, one lags
+    ("rec", "404", "safe"),
 ])
 def test_quorum_failure_never_slashes(vm, funded, direct_alice, feeds):
     r = rec()
-    mock_feeds(vm, *[r if f == "rec" else f for f in feeds])
+    mock_feeds(vm, *[r if f == "rec" else rec(tier=0) if f == "safe" else f for f in feeds])
     assert report(vm, funded, direct_alice) == "QUORUM_FAILURE"
     a = hexof(funded, vm, direct_alice)
     assert funded.claimable_of(a) == str(BOND)               # bond intact
@@ -281,9 +285,9 @@ def test_quorum_failure_is_retryable(vm, funded, direct_alice):
     ("safe", "safe", "safe"),
     ("safe", "safe", "500"),
     ("safe", "404", "404"),
-    ("threat", "safe", "404"),
-    ("threat", "404", "404"),
     ("safe", "404", "safe"),
+    ("threat", "safe", "safe"),     # every source answered, only one confirms
+    ("safe", "threat", "safe"),
 ])
 def test_unfounded_or_safe_reports_forfeit_the_bond(vm, funded, direct_alice, feeds):
     lookup = {"threat": rec(tier=2), "safe": rec(tier=0)}
@@ -450,7 +454,48 @@ def test_self_manufactured_phishing_domain_costs_the_attacker(vm, funded, direct
 
 def test_single_colluding_feed_cannot_blacklist(vm, funded, direct_alice):
     mock_feeds(vm, drainer(), "404", "404")
+    out = report(vm, funded, direct_alice)
+    assert out == "QUORUM_FAILURE"                       # not blacklisted ...
+    assert funded.check_transaction_safety(TARGET)["verdict"] == "ALLOW"
+    assert funded.get_target_count() == 0               # ... and nothing recorded
+
+
+def test_single_confirmed_plus_two_404_preserves_bond_and_is_retryable(vm, funded, direct_alice):
+    """Honest early report: one feed already has the record, two have not synced."""
+    r = drainer()
+    mock_feeds(vm, r, "404", "404")
+    assert report(vm, funded, direct_alice) == "QUORUM_FAILURE"
+    a = hexof(funded, vm, direct_alice)
+    assert funded.claimable_of(a) == str(BOND)                         # bond intact
+    assert funded.get_pool_state()["locked_slash_reserve"] == "0"      # nothing forfeited
+    # the CDNs catch up; the same reporter retries and is verified
+    mock_feeds(vm, r, r, "404")
+    assert report(vm, funded, direct_alice) == "BLACKLISTED"
+    assert funded.get_target_status(TARGET)["status"] == "BLACKLISTED"
+
+
+def test_single_confirmed_plus_404_and_outage_preserves_bond(vm, funded, direct_alice):
+    r = drainer()
+    mock_feeds(vm, r, "404", "500")
+    assert report(vm, funded, direct_alice) == "QUORUM_FAILURE"
+    assert funded.claimable_of(hexof(funded, vm, direct_alice)) == str(BOND)
+    assert funded.get_pool_state()["locked_slash_reserve"] == "0"
+
+
+def test_single_confirmed_with_all_others_clean_is_still_dismissed(vm, funded, direct_alice):
+    mock_feeds(vm, drainer(), rec(tier=0), rec(tier=0))
     assert report(vm, funded, direct_alice) == "DISMISSED"
+    assert funded.get_pool_state()["locked_slash_reserve"] == str(BOND)
+
+
+def test_lagging_reevaluation_is_retryable_too(vm, funded, direct_alice, direct_bob):
+    r = rec(tier=1)
+    mock_feeds(vm, r, r, r)
+    report(vm, funded, direct_alice)
+    vm.warp("2026-10-17T00:00:01Z")
+    mock_feeds(vm, r, "404", "404")                      # one feed still shows it, others lag
+    assert send(vm, funded, direct_bob, funded.reevaluate_target, TARGET) == "QUORUM_FAILURE"
+    assert funded.get_target_status(TARGET)["status"] == "QUARANTINED"
 
 
 def test_two_colluding_feeds_with_forged_hash_cannot_earn_bounty(vm, funded, direct_alice):

@@ -21,12 +21,14 @@ export function aggregate(sources: SourceOutcome[], expectedHash: string): Aggre
   const confirms: Extract<SourceOutcome, { kind: "OK" }>[] = [];
   let clean = 0;
   let outage = 0;
+  let missing = 0;
   for (const s of sources) {
     if (s.kind === "OUTAGE") {
       outage += 1;
       continue;
     }
     clean += 1;
+    if (s.kind === "NOT_FOUND") missing += 1;
     if (isConfirming(s, expectedHash)) confirms.push(s as Extract<SourceOutcome, { kind: "OK" }>);
   }
   if (confirms.length >= 2) {
@@ -39,6 +41,11 @@ export function aggregate(sources: SourceOutcome[], expectedHash: string): Aggre
       evidence_hash: expectedHash,
       published_ts: Math.min(...confirms.map((c) => c.publishedTs)),
     };
+  }
+  // LAG RULE: one confirmation next to any 404/outage is what an honest early
+  // report looks like while CDNs propagate -> retryable, never a slash.
+  if (confirms.length === 1 && (missing > 0 || outage > 0)) {
+    return { verdict: 2, tier: 0, source_count: clean, evidence_hash: expectedHash, published_ts: 0 };
   }
   if (outage > 0 && confirms.length + outage >= 2) {
     return { verdict: 2, tier: 0, source_count: clean, evidence_hash: expectedHash, published_ts: 0 };

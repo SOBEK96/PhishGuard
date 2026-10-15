@@ -18,6 +18,9 @@ const KEYS = Object.keys(SYM);
 
 /** Independent oracle: verdict is whatever EVERY completion of the outages agrees on. */
 function oracle(syms: string[]): number {
+  // LAG RULE: exactly one confirmation next to any 404/outage is a retryable failure.
+  const confirmations = syms.filter((s) => s === "C1" || s === "C2").length;
+  if (confirmations === 1 && syms.some((s) => s === "X" || s === "U")) return 2;
   const known = syms.filter((s) => s !== "U");
   const nOut = syms.length - known.length;
   const confirm = known.filter((s) => s === "C1" || s === "C2").length;
@@ -37,6 +40,26 @@ describe("aggregate vs semantic oracle (all 216 source combinations)", () => {
     const p = aggregate([SYM[a], SYM[b], SYM[c]], EV);
     expect(p.verdict).toBe(oracle([a, b, c]));
     expect(p.evidence_hash).toBe(EV);
+  });
+});
+
+describe("lag rule (single confirmation + 404/outage)", () => {
+  it.each([
+    ["C2", "X", "X"], ["C1", "X", "X"], ["X", "C2", "X"], ["X", "X", "C2"],
+    ["C2", "X", "U"], ["C2", "U", "U"], ["C2", "S", "X"], ["C2", "M", "X"], ["S", "X", "C1"],
+  ])("%s %s %s -> QUORUM_FAILURE", (a, b, c) => {
+    const p = aggregate([SYM[a], SYM[b], SYM[c]], EV);
+    expect(p.verdict).toBe(2);
+    expect(p.tier).toBe(0);
+    expect(p.published_ts).toBe(0);
+  });
+  it.each([
+    ["C2", "S", "S"], ["C2", "M", "S"], ["C1", "M", "M"],
+  ])("%s %s %s (everyone answered cleanly) -> still dismissed", (a, b, c) => {
+    expect(aggregate([SYM[a], SYM[b], SYM[c]], EV).verdict).toBe(0);
+  });
+  it.each([["X", "X", "X"], ["X", "X", "U"], ["S", "S", "X"]])("%s %s %s (no confirmation) -> dismissed", (a, b, c) => {
+    expect(aggregate([SYM[a], SYM[b], SYM[c]], EV).verdict).toBe(0);
   });
 });
 

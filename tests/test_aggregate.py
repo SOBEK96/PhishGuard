@@ -28,10 +28,16 @@ def mk(mod, sym, ts=PUBLISHED):
 
 def oracle(syms):
     """Independent semantic oracle: the verdict is whatever EVERY completion of the
-    unreachable sources agrees on; otherwise QUORUM_FAILURE."""
+    unreachable sources agrees on; otherwise QUORUM_FAILURE.
+
+    LAG RULE: exactly one confirmation next to any 404/outage is a (retryable)
+    QUORUM_FAILURE, never a slash -- a lone early record is what honest CDN lag
+    looks like."""
     known = [s for s in syms if s != "U"]
     n_out = len(syms) - len(known)
     confirm = sum(1 for s in known if s in ("C1", "C2"))
+    if confirm == 1 and any(s in ("X", "U") for s in syms):
+        return 2
     outcomes = set()
     for fills in itertools.product([0, 1], repeat=n_out):  # 1 == outage turns out to confirm
         outcomes.add(1 if confirm + sum(fills) >= 2 else 0)
@@ -64,7 +70,28 @@ def test_two_safe_and_outage_is_safe(pg, mod):
 
 
 def test_three_clean_with_single_threat_is_safe(pg, mod):
-    assert mod._aggregate([mk(mod, "C2"), mk(mod, "S"), mk(mod, "X")], EV)["verdict"] == 0
+    # every source answered with a valid record and only one confirms: dismissed
+    assert mod._aggregate([mk(mod, "C2"), mk(mod, "S"), mk(mod, "S")], EV)["verdict"] == 0
+    assert mod._aggregate([mk(mod, "C2"), mk(mod, "S"), mk(mod, "M")], EV)["verdict"] == 0
+    assert mod._aggregate([mk(mod, "C1"), mk(mod, "M"), mk(mod, "M")], EV)["verdict"] == 0
+
+
+@pytest.mark.parametrize("others", [("X", "X"), ("X", "U"), ("U", "U"), ("X", "S"), ("X", "M"), ("S", "X"), ("U", "S"), ("M", "U")])
+@pytest.mark.parametrize("conf", ["C1", "C2"])
+def test_single_confirmation_with_404_or_outage_is_quorum_failure_never_a_slash(pg, mod, conf, others):
+    for order in (0, 1, 2):
+        srcs = [mk(mod, others[0]), mk(mod, others[1])]
+        srcs.insert(order, mk(mod, conf))
+        p = mod._aggregate(srcs, EV)
+        assert p["verdict"] == 2, (conf, others, order)
+        assert p["tier"] == 0 and p["published_ts"] == 0
+
+
+def test_no_confirmation_at_all_is_still_dismissed(pg, mod):
+    # the lag rule is about ONE real confirmation; fabricated reports still lose the bond
+    assert mod._aggregate([mk(mod, "X"), mk(mod, "X"), mk(mod, "X")], EV)["verdict"] == 0
+    assert mod._aggregate([mk(mod, "X"), mk(mod, "X"), mk(mod, "U")], EV)["verdict"] == 0
+    assert mod._aggregate([mk(mod, "S"), mk(mod, "S"), mk(mod, "X")], EV)["verdict"] == 0
 
 
 def test_all_outage_is_quorum_failure(pg, mod):

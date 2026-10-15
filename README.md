@@ -11,58 +11,77 @@ and routers can query before signing.
 | `TIER_1_SUSPICIOUS` (1) | anomaly, no drainer payload | 48h `QUARANTINE_WATCH`, bond refunded |
 | `TIER_2_DRAINER` (2) | confirmed drainer | `BLACKLISTED`; bond + fixed bounty vest after a 24h cooldown |
 
-## Live deployment (GenLayer Studio Next, chain 61997) - economically hardened build
+## Live deployment (GenLayer Studio Next, chain 61997) - lag-rule build
 
 | | |
 |---|---|
-| Contract | `0x07d4631B39CD5817f28C2Aff0f28B58f34911077` ([explorer](https://explorer-studio-next.genlayer.com/address/0x07d4631B39CD5817f28C2Aff0f28B58f34911077)) |
+| Contract | `0x49EC7a7bDBD93d26f81b019310041C523d4E4717` ([explorer](https://explorer-studio-next.genlayer.com/address/0x49EC7a7bDBD93d26f81b019310041C523d4E4717)) |
 | Deployer / governor | `0xE6d38f463c03b2B9fB42a9D565c69a1ddc283964` (`phishguard-deployer`) |
 | Reporter | `0xfc35738E3c8dA590E1Fe0006E25FD031f93df246` (`phishguard-reporter`) |
-| Source SHA-256 | `2d882b08fccb1a2daebdb19cd9d19799e79784e6d76969508959d76d72cf883e` (equals the on-chain deployed code hash) |
+| Source SHA-256 | `bb1082bbc4a9f28e699c4a077e03ecbd04673d62bdd2f3e0dc4b5c1433b6d5f2` (equals the on-chain deployed code hash) |
 | Feed pin | commit `7f7173bf44bc1b868733978b9675882b9f6ac7f8` |
 
 Transactions (all `ACCEPTED` / `MAJORITY_AGREE`):
 
 | Step | Hash |
 |---|---|
-| deploy | `0xb67635de53005499ddbb3bb0b9f206b306422eda1c79e40badcde4c8caccca72` |
-| register_brand:uniswap | `0x859d6a5ba551b2c4fd76505a254c372188e249a7b2fd75ed9331b7cfa3d7bff0` |
-| register_brand:opensea | `0x89edbb5a0736331944c067aa71833a56855421cf3d144475c595451584fa224c` |
-| fund_bounty_pool(12000000000000000 wei) | `0x32f9098eb0a786182eb029f6650114e276328a6770f6e10a400f056b1d4123c1` |
-| report_target(0.01 GEN bond) | `0x37020a3c3388faefcf5135cd660d5cd21845d110aff9b54c2b9a4280280b4c5c` |
+| deploy | `0xd6e755d1cf92df40592f05dc10f74562668b80a8e41d03068b9a7e96ee06bb3e` |
+| register_brand:uniswap | `0x371cff0667066eebf372c2ffe4747388725e21649e69eca2b05496147d9fd1a5` |
+| register_brand:opensea | `0x1fd94ab8fe4534706a0540bcd50531b5ddc4583ea58fb14728ea6ed1149efe85` |
+| fund_bounty_pool(70000000000000000 wei) | `0x4db25ace306ead69d371f8ba8b2d0ab67d24cff5635cc0f87c438c8ef738732d` |
+| report_target(0.01 GEN bond) | `0xcd8ec346d2671a3f3656ea07763a5281877b93671500e6091f1fdd1d8b08c1b8` |
 
 Live `gen_call` readbacks (full output in `deployments/studio-next.json`):
 
-* `get_target_status("uniswap-claim-airdrop.com")` -> `BLACKLISTED`, tier 2, `source_count 3`, `bond_held 0.01 GEN`, `vest_at 1792169127` (report time + 24h)
-* `check_transaction_safety` -> exact `BLOCK`; `app.…` -> `BLOCK` (inherited from `uniswap-claim-airdrop.com`); `claim.app.…` -> `BLOCK`; unrelated host -> `ALLOW`
+* `get_target_status("uniswap-claim-airdrop.com")` -> `BLACKLISTED`, tier 2, `source_count 3`, `bond_held 0.01 GEN`
+* `check_transaction_safety` -> exact `BLOCK`; `app.…` -> `BLOCK` (inherited); `claim.app.…` -> `BLOCK`; unrelated host -> `ALLOW`
 * `assert_target_safe` reverts for the exact host and for `app.…`
-* `get_pool_state()` -> `bounty_pool 0.012 GEN`, `epoch_cap 0.0024 GEN` (20 % of net capital), `held_bonds 0.01 GEN`, `solvent: true`
+* `get_pool_state()` -> `bounty_pool 0.07 GEN`, `epoch_cap 0.014 GEN` (20 % of net capital), `solvent: true`
 * `get_feed_sources()` -> `raw.githubusercontent.com` / `cdn.jsdelivr.net` / `raw.githack.com`
 
 ### Honest deviations
 
-* **The live pool is tiny (0.012 GEN), so this build reserved no bounty live.** Earlier seeds (0.5 GEN, 0.1 GEN,
-  0.12 GEN) sit in superseded contracts and the funding accounts were nearly empty. 20 % of 0.012 GEN is below the fixed
-  0.02 GEN bounty. The net-capital cap and the fresh vest window are therefore verified by tests (695 pytest), not
-  re-demonstrated live on this build (the previous build did show the mid-epoch cap live).
-* **`claim_payout` settlement is unverified on Studio Next.** The first deployment's emitted transfer was finalized but
-  never executed, which is also why those funds are stranded. A successful receipt means "recorded", not "paid".
+* **The live pool is small (0.07 GEN) and no bounty was reserved live**: 20 % of 0.07 GEN is below the fixed 0.02 GEN
+  bounty. Earlier seeds sit in superseded contracts whose emitted payout transfers Studio Next never executed.
+* **`claim_payout` settlement is unverified on Studio Next.** A successful receipt means "recorded", not "paid".
+* **The lag rule is test-verified, not live-verified.** Showing "1 confirmation + 404s -> QUORUM_FAILURE" on chain
+  needs a fixture present in only one pinned feed; the feeds are pinned to commit `7f7173b` and rotation sits behind
+  the 7-day governance timelock.
 * Faucet `sim_fundAccount` credited 0; accounts were funded from existing unlocked CLI accounts.
 * 2 brands registered (uniswap, opensea) to conserve fee deposits.
 * Direct-mode tests need the v0.3 runner (`py-genlayer:5jycge…`, `GENVM_VERSION=v0.6.0-rc7`).
-* Superseded deployments (left untouched): `0x4135EAF1…B01b`, `0x5Ecc9853…E8DB` (eacf14c), `0x4890C058…6507` (f8434bd).
-* Three CDN hosts of one repo are not three independent sources of threat truth; `operator` is a registered string.
-  Fixtures are commit-pinned, so a new threat/remediation needs governance to re-pin feeds.
+* Superseded deployments (left untouched): `0x4135EAF1…B01b`, `0x5Ecc9853…E8DB`, `0x4890C058…6507`, `0x07d4631B…1077`.
 
-## Economic hardening (recheck of f8434bd)
+## Verdicts and threat model
 
-| Finding | Root cause | Fix | Regression test |
-|---|---|---|---|
-| Re-report could short-circuit a vest window | `_settle_prior` credited the previous cycle's *unvested* bounty immediately, tying its payout to the new report instead of its own cooldown | superseded escrow moves to its own `VestEntry` with its **original** `vest_at` (`claim_vested`); every fresh verified report gets a new `now + 24h` window; neither can shorten or inherit the other | `test_rereported_target_cannot_bypass_cooldown_window` (+2) |
-| Recycling liquidity inflated the epoch cap | cap tracked deposit/withdraw *deltas*, floored at `paid`: once slack hit the floor a withdrawal was free and the re-deposit added 20 % again (0.5 GEN -> 0.18 GEN reservable, 36 %) | cap is a pure function of **net capital** = `bounty_pool + reserved_bounty` at reservation time (`epoch_paid + bounty <= 20 % x capital`); no stored cap to drift | `test_recycling_same_liquidity_via_deposit_withdraw_cannot_inflate_epoch_cap` (fails on f8434bd: 0.18 > 0.1) |
+`_aggregate` reads the three governed feeds and returns one of three verdicts. Each source answers `CONFIRM` (a valid
+ACTIVE tier >= 1 record carrying the reporter's evidence commitment), `CLEAN` (any other valid record: safe, revoked,
+remediated, or a different commitment), `404`, or `OUTAGE` (timeout / 5xx / schema error / future-dated record).
 
-Note on the requested formula: `bounty_pool - reserved_bounty` would double-count, because reserving already moves money
-out of `bounty_pool`; a reserved bounty is still vault capital until it vests. Reserved + free is the net figure.
+| Sources | Verdict | Bond |
+|---|---|---|
+| >= 2 CONFIRM | `VERIFIED_REPORT` (tier: min of 2, median of 3) | returned / vests |
+| **exactly 1 CONFIRM + any 404 or OUTAGE** | **`QUORUM_FAILURE`** | **intact, retry** |
+| 1 CONFIRM, the other two both CLEAN | `SAFE_OR_UNFOUNDED` | forfeited |
+| 0 CONFIRM (>= 2 CLEAN, or 404s, or fabricated) | `SAFE_OR_UNFOUNDED` | forfeited |
+| 0 CONFIRM + an unreachable source that could still complete a quorum | `QUORUM_FAILURE` | intact, retry |
+| every source in OUTAGE | `QUORUM_FAILURE` | intact, retry |
+
+**Why a lone confirmation next to a 404 is a retry, not a slash.** A single feed that already carries the record
+while the others have not propagated (CDN lag, regional sync delay) is exactly what an honest early report looks like.
+Dismissing it would permanently penalise the reporter for feed lag, so it is retryable with the bond intact. A report is
+only dismissed when no source confirms it, or every source answered with a clean, non-confirming record.
+
+**Known limitations (not hidden):**
+
+* **Single-key governor.** One account registers brands and stages feed rotations; rotation is behind a 7-day
+  timelock and cannot move funds, but it is one key, not a multisig or DAO.
+* **Three CDN mirrors of one repository.** The three hosts are distinct hostnames, but all serve the single
+  `SOBEK96/PhishGuard` repo; `operator` is a registered string, not verified ownership. They are not three independent
+  sources of threat truth, and the fixtures are commit-pinned, so a new threat or remediation requires a governance
+  re-pin. This is a demo feed set, not a live threat-intelligence service.
+* Payout settlement via `emit_transfer` is unverified on Studio Next (see above).
+* Unknown targets are `ALLOW` by design (unassessed, not verified safe).
 
 ## Audit hardening (review of eacf14c)
 
@@ -109,8 +128,8 @@ deployments/phish_guard_abi.json  live contract schema
 deploy/deploy_phish_guard.ts  deploy + seed + live report + readback (genlayer-js 2.0.0-rc.1)
 deploy/ops.ts                 ad-hoc signed writes with SDK fee estimation
 deploy/post_deploy.ts         live mid-epoch top-up + second report + readbacks
-tests/                        695 direct-mode pytest tests (+ tests/vectors golden corpus)
-frontend/                     Next.js 16.4.1 + Tailwind 4 SOC console (597 vitest tests)
+tests/                        720 direct-mode pytest tests (+ tests/vectors golden corpus)
+frontend/                     Next.js 16.4.1 + Tailwind 4 SOC console (612 vitest tests)
 ```
 
 ## Verify
@@ -120,7 +139,7 @@ uv venv --python 3.12 && uv pip install --prerelease=allow -r requirements-dev.t
 export GENVM_VERSION=v0.6.0-rc7
 .venv/bin/genvm-lint check contracts/phish_guard.py     # lint + validation
 .venv/bin/genvm-lint typecheck contracts/phish_guard.py # 0 errors, 0 diagnostics
-.venv/bin/python -m pytest tests -q                     # 695 passed
+.venv/bin/python -m pytest tests -q                     # 720 passed
 cd frontend && npm ci && npx tsc --noEmit && npx eslint --max-warnings 0 . && npx vitest run && npm run build
 npm audit --registry=https://registry.npmjs.org         # 0 vulnerabilities
 ```

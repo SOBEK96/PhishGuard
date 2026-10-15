@@ -347,15 +347,26 @@ def _aggregate(sources: list, expected_hash: str) -> dict:
     confirm. If fewer than 2 confirm but the unreachable sources COULD complete
     a 2-of-3 quorum, the result is QUORUM_FAILURE (retryable, bond intact) --
     an outage can never be converted into a slash.
+
+    LAG RULE: exactly ONE confirmation accompanied by any 404 or outage is also
+    QUORUM_FAILURE. A single feed that already carries the record, while the
+    others have not propagated (CDN lag, regional sync delay), is exactly what
+    an honest early report looks like, so it must be retryable and must never
+    forfeit the bond. A report is dismissed (bond slashed) only when NO source
+    confirms it, or when every source answered with a clean, non-confirming
+    record (>= 2 explicit safe / mismatching records, no missing source).
     """
     confirms = []
     clean = 0
     outage = 0
+    missing = 0
     for s in sources:
         if s["k"] == SRC_OUTAGE:
             outage += 1
             continue
         clean += 1
+        if s["k"] == SRC_NOT_FOUND:
+            missing += 1
         if _is_confirming(s, expected_hash):
             confirms.append(s["rec"])
 
@@ -371,6 +382,15 @@ def _aggregate(sources: list, expected_hash: str) -> dict:
             "source_count": clean,
             "evidence_hash": expected_hash,
             "published_ts": pub,
+        }
+
+    if n_conf == 1 and (missing > 0 or outage > 0):
+        return {
+            "verdict": VERDICT_QUORUM_FAILURE,
+            "tier": TIER_0_SAFE,
+            "source_count": clean,
+            "evidence_hash": expected_hash,
+            "published_ts": 0,
         }
 
     if outage > 0 and n_conf + outage >= 2:
