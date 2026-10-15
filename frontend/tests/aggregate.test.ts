@@ -106,6 +106,11 @@ describe("classifyResponse", () => {
     ["bad hash", JSON.stringify({ ...rec, evidence_hash: "zz" })],
     ["bad ts", JSON.stringify({ ...rec, published_ts: 0 })],
     ["oversized", JSON.stringify({ ...rec, pad: "x".repeat(9000) })],
+    ["missing first_seen_ts", JSON.stringify({ ...rec, first_seen_ts: undefined })],
+    ["missing campaign_id", JSON.stringify({ ...rec, campaign_id: undefined })],
+    ["missing brand_id", JSON.stringify({ ...rec, brand_id: undefined })],
+    ["float literal tier", JSON.stringify(rec).replace('"tier":2', '"tier":2.0')],
+    ["future published_ts", JSON.stringify({ ...rec, published_ts: 4000000000 })],
   ])("200 + %s is an OUTAGE, never a 404", (_n, body) => {
     expect(classifyResponse(200, body, "evil.com").kind).toBe("OUTAGE");
   });
@@ -113,7 +118,10 @@ describe("classifyResponse", () => {
 
 describe("fetchSource", () => {
   const ok = (body: unknown, status = 200) =>
-    (async () => ({ status, text: async () => (typeof body === "string" ? body : JSON.stringify(body)) }) as Response) as typeof fetch;
+    (async () => {
+      const text = typeof body === "string" ? body : JSON.stringify(body);
+      return { status, arrayBuffer: async () => new TextEncoder().encode(text).buffer } as unknown as Response;
+    }) as typeof fetch;
   it("builds the feed URL from base + slug", () => {
     expect(feedUrl("https://h.example/x/", "evil.com")).toBe("https://h.example/x/evil.com.json");
   });
@@ -128,7 +136,7 @@ describe("fetchSource", () => {
     expect((await fetchSource("https://h.example/", "evil.com", ok("", 404))).kind).toBe("NOT_FOUND");
   });
   it("parses a good body", async () => {
-    const body = { target_id: "evil.com", tier: 1, status: "ACTIVE", evidence_hash: EV, published_ts: 5 };
+    const body = { target_id: "evil.com", tier: 1, status: "ACTIVE", evidence_hash: EV, published_ts: 5, first_seen_ts: 1, campaign_id: "c", brand_id: "b" };
     expect((await fetchSource("https://h.example/", "evil.com", ok(body))).kind).toBe("OK");
   });
 });

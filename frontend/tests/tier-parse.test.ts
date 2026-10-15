@@ -60,6 +60,7 @@ const target = {
   target_id: "evil.com", known: true, status: "BLACKLISTED", tier: 2, tier_name: "TIER_2_DRAINER", reporter: "0xabc",
   bond_amount: "1", bond_held: "1", bounty_reserved: "2", vest_at: 5, report_ts: 4, published_ts: 3, quarantine_until: 0,
   override_ts: 0, evidence_hash: "a".repeat(64), campaign_id: "c", brand_id: "b", first_seen_ts: 1, source_count: 3, resolutions: 1,
+  effective_status: "BLACKLISTED", effective_tier: 2, effective_from: "evil.com", inherited: false,
 };
 
 describe("parseTarget / parseSafety / parseFeeds", () => {
@@ -67,11 +68,23 @@ describe("parseTarget / parseSafety / parseFeeds", () => {
   it("rejects an unknown status", () => expect(() => parseTarget({ ...target, status: "HACKED" })).toThrow());
   it("rejects an out-of-range tier", () => expect(() => parseTarget({ ...target, tier: 3 })).toThrow());
   it("decodes a safety check", () => {
-    const s = parseSafety({ target_id: "evil.com", known: true, status: "BLACKLISTED", tier: 2, tier_name: "TIER_2_DRAINER", verdict: "BLOCK", blocked: true, warn: false, quarantine_until: 0 });
+    const s = parseSafety({ target_id: "evil.com", known: true, status: "BLACKLISTED", tier: 2, tier_name: "TIER_2_DRAINER", verdict: "BLOCK", blocked: true, warn: false, quarantine_until: 0, matched_target: "evil.com", inherited: false });
     expect(s.verdict).toBe("BLOCK");
+    expect(s.inherited).toBe(false);
+  });
+  it("decodes an inherited subdomain verdict", () => {
+    const s = parseSafety({ target_id: "app.evil.com", known: true, status: "BLACKLISTED", tier: 2, tier_name: "TIER_2_DRAINER", verdict: "BLOCK", blocked: true, warn: false, quarantine_until: 0, matched_target: "evil.com", inherited: true });
+    expect(s.inherited).toBe(true);
+    expect(s.matched_target).toBe("evil.com");
+  });
+  it("requires the inheritance fields", () => {
+    expect(() => parseSafety({ target_id: "x.com", known: false, status: "UNKNOWN", tier: 0, tier_name: "T", verdict: "ALLOW", blocked: false, warn: false, quarantine_until: 0 })).toThrow();
+    const { inherited: _i, ...noInherited } = target as Record<string, unknown>;
+    void _i;
+    expect(() => parseTarget(noInherited)).toThrow();
   });
   it("rejects an unknown verdict", () => {
-    expect(() => parseSafety({ target_id: "x.com", known: false, status: "UNKNOWN", tier: 0, tier_name: "T", verdict: "MAYBE", blocked: false, warn: false, quarantine_until: 0 })).toThrow();
+    expect(() => parseSafety({ target_id: "x.com", known: false, status: "UNKNOWN", tier: 0, tier_name: "T", verdict: "MAYBE", blocked: false, warn: false, quarantine_until: 0, matched_target: "", inherited: false })).toThrow();
   });
   const feed = (slot: string) => ({ slot, base_url: "https://h/", host: "h", operator: "o", staged_url: "", staged_host: "", staged_operator: "", staged_ready_at: 0 });
   it("decodes three feeds", () => expect(parseFeeds([feed("A"), feed("B"), feed("C")])).toHaveLength(3));

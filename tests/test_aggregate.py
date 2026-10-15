@@ -195,8 +195,8 @@ def test_validator_agreement_compares_decision_fields(pg, mod):
     assert mod._payloads_agree(GOOD, other, False)
     for key, val in (("verdict", 0), ("tier", 1), ("published_ts", 1), ("evidence_hash", "f" * 64)):
         assert not mod._payloads_agree(GOOD, {**GOOD, key: val}, False)
-    # source_count may legitimately differ by CDN lag; the decision must not.
-    assert mod._payloads_agree(GOOD, {**GOOD, "source_count": 2}, False)
+    # source_count feeds the bounty gate, so it is consensus-agreed too.
+    assert not mod._payloads_agree(GOOD, {**GOOD, "source_count": 2}, False)
 
 
 def test_validator_agreement_compares_revision_on_appeals(pg, mod):

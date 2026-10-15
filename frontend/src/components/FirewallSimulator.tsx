@@ -6,6 +6,7 @@ import Panel from "./Panel";
 import TierBadge from "./TierBadge";
 import { readClient, readSafety } from "@/lib/contract";
 import { normalizeTarget } from "@/lib/validation";
+import { parentChain } from "@/lib/hostname";
 import { DEMO_TARGET } from "@/lib/deployment";
 import type { SafetyCheck } from "@/lib/types";
 
@@ -91,8 +92,18 @@ export default function FirewallSimulator() {
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <TierBadge tier={result.tier} />
             <span className="sig text-xs">{result.status}</span>
-            {!result.known && <span className="text-xs text-mute">unlisted - default allow</span>}
+            {!result.known && <span className="text-xs text-mute">unlisted - default allow (UNASSESSED, not verified safe)</span>}
           </div>
+          {result.inherited && (
+            <div className="sig mt-2 text-xs" style={{ color: tone }}>
+              inherited from parent domain <b>{result.matched_target}</b> - a listing covers every subdomain beneath it
+            </div>
+          )}
+          {!result.inherited && parentChain(result.target_id).length > 0 && (
+            <div className="sig mt-2 text-[11px] text-mute">
+              parents checked: {parentChain(result.target_id).join(" > ")}
+            </div>
+          )}
         </div>
       )}
 

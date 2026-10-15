@@ -117,6 +117,10 @@ export function parseTarget(v: unknown): TargetStatus {
     first_seen_ts: int(o, "first_seen_ts"),
     source_count: int(o, "source_count"),
     resolutions: int(o, "resolutions"),
+    effective_status: state(o, "effective_status"),
+    effective_tier: tier(o, "effective_tier"),
+    effective_from: str(o, "effective_from"),
+    inherited: bool(o, "inherited"),
   };
 }
 
@@ -134,5 +138,7 @@ export function parseSafety(v: unknown): SafetyCheck {
     blocked: bool(o, "blocked"),
     warn: bool(o, "warn"),
     quarantine_until: int(o, "quarantine_until"),
+    matched_target: str(o, "matched_target"),
+    inherited: bool(o, "inherited"),
   };
 }

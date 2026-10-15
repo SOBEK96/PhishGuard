@@ -11,51 +11,69 @@ and routers can query before signing.
 | `TIER_1_SUSPICIOUS` (1) | anomaly, no drainer payload | 48h `QUARANTINE_WATCH`, bond refunded |
 | `TIER_2_DRAINER` (2) | confirmed drainer | `BLACKLISTED`; bond + fixed bounty vest after a 24h cooldown |
 
-## Live deployment (GenLayer Studio Next, chain 61997)
+## Live deployment (GenLayer Studio Next, chain 61997) - hardened build
 
 | | |
 |---|---|
-| Contract | `0x5Ecc98535e3EBBbC965f72ee8C3E411c402CE8DB` |
+| Contract | `0x4890C058f446A2B8DAb7d5b80c6F75B436756507` |
 | Deployer / governor | `0xE6d38f463c03b2B9fB42a9D565c69a1ddc283964` (`phishguard-deployer`) |
 | Reporter | `0xfc35738E3c8dA590E1Fe0006E25FD031f93df246` (`phishguard-reporter`) |
-| Source SHA-256 | `1336df9c8a3dbc055672e96938d46d9d7885835410262d21536ae7479b1169c8` (equals the on-chain deployed code hash) |
+| Source SHA-256 | `2123670368f120923fded700b707ae9d7b43e15655b18b159efcea2249524889` (equals the on-chain deployed code hash) |
 | Feed pin | commit `7f7173bf44bc1b868733978b9675882b9f6ac7f8` |
 
 Transactions (all `ACCEPTED` / `FINISHED_WITH_RETURN` / `MAJORITY_AGREE`):
 
 | Step | Hash |
 |---|---|
-| deploy | `0xf04e86a9456a2b660182760d6d9a7861b0540353f1c8b0c29f36806e74476305` |
-| register_brand uniswap | `0x3de1c3254d56e59a28ec39a87ed9d884904d3a9cadcaa876bc97d4bffc7fa8be` |
-| register_brand opensea | `0x1a67f0734b94f05907016b2033862b5d81446526bbf0dd4c951f5c83d59f83a3` |
-| register_brand rabby | `0x13ecb1e22dc58253f682ea6d948ba9e33164addf2e131ec45605467503e77b50` |
-| register_brand aave | `0x3b6d4a32fa47ccf2db6896e0a6ccca38be32d6168ceb6da9cfe67dcb32d2ee6c` |
-| fund_bounty_pool (0.1 GEN) | `0x8f08de485412798406385fc2a5a01868a477fcffc4a1aa499dfc7c39465bb0b8` |
-| report_target (0.01 GEN bond, live triage) | `0x59a0d7ad95d726e698307aeac3e96fb7de5d3957db197c2b7a6f56d9d2ccfbf9` |
+| deploy | `0x79aa13e0f15261269903797bb834166b0adf988c1a4284178e5cb5d3c6ccc7cc` |
+| register_brand:uniswap | `0xce04e38315147b92cac3d77c4a7c2b701609eec01c9fc8da678ba39e00faa1b8` |
+| register_brand:opensea | `0x411304b43168db0182be6095c24040de180b8a9bf334b062860f87e3536b192c` |
+| register_brand:rabby | `0xc16fad83901861fd95bddaa247182675a0a8cbd5726712434dc1720addc6c6ed` |
+| register_brand:aave | `0x21d2f047b1f292bcb8e41d07e2ad458aa91a9d02885232d777cd9677e2f2f03a` |
+| fund_bounty_pool(80000000000000000 wei) | `0xdd00cc7211b82ed8ed309545af017bdc656f94495224d723314270bd3ddf8317` |
+| report_target(0.01 GEN bond) | `0x902599daf34cf90e07ce73c1ded59ce6f3c0354a2fec25726287a85de3fe7671` |
+| fund_bounty_pool(+40000000000000000 wei, mid-epoch top-up) | `0x3c570627e4ce0db4ea1c0562244e3db58552c347d4c73d06a821f85e0fb2f9de` |
+| report_target(second target, 0.01 GEN bond) | `0x6783208280f16c2145f991d546573353976896405061fedd3bb73071b9a2f885` |
 
 Live `gen_call` readbacks (full output in `deployments/studio-next.json`):
 
-* `get_target_status("uniswap-claim-airdrop.com")` → `status: BLACKLISTED`, `tier: 2`, `source_count: 3`,
-  `bond_held: 10000000000000000`, `bounty_reserved: 20000000000000000`, `vest_at: 1792163020`
-* `get_pool_state()` → `bounty_pool: 80000000000000000`, `reserved_bounty: 20000000000000000`,
-  `held_bonds: 10000000000000000`, `epoch_cap: 20000000000000000`, `solvent: true`
-* `get_feed_sources()` → A `raw.githubusercontent.com`, B `cdn.jsdelivr.net`, C `raw.githack.com`
-  (operators `github.com` / `jsdelivr.com` / `githack.com`)
-* `check_transaction_safety("uniswap-claim-airdrop.com")` → `verdict: BLOCK`
+* `get_target_status("uniswap-claim-airdrop.com")` -> `BLACKLISTED`, tier 2, `source_count 3`, `bond_held 0.01 GEN`
+* `check_transaction_safety("uniswap-claim-airdrop.com")` -> `BLOCK`
+* **Subdomains:** `check_transaction_safety("app.uniswap-claim-airdrop.com")` -> `BLOCK`
+  (`inherited: true`, `matched_target: uniswap-claim-airdrop.com`); `claim.app.…` -> `BLOCK`;
+  `assert_target_safe("app.uniswap-claim-airdrop.com")` reverts; the unrelated `notuniswap-claim-airdrop.com` -> `ALLOW`
+* **Mid-epoch cap (P03):** `epoch_cap` 0.016 -> 0.024 GEN after a 0.04 GEN top-up; the second report
+  (`opensea-seaport-mint.net`) then reserved the 0.02 GEN bounty; `reserved_bounty == sum(target.bounty_reserved)`,
+  `solvent: true`
+* `get_feed_sources()` -> A `raw.githubusercontent.com`, B `cdn.jsdelivr.net`, C `raw.githack.com`
 
-### Honest deviations from the brief
+### Honest deviations
 
-* **Seed is 0.1 GEN, not 0.5 GEN.** The first deployment (`0x4135EAF1…B01b`, superseded; it hard-reverted on
-  `first_seen_ts > now`, which breaks SDK fee simulation) was seeded with 0.5 GEN. I withdrew it with
-  `withdraw_pool_shares` + `claim_payout`; the finalized transaction emitted the transfer message but Studio
-  Next never executed it (`triggered_transactions` empty, value still on that contract). Those 0.5 GEN are stranded —
-  by design there is no admin sweep. **`claim_payout`'s on-chain settlement is therefore unverified on Studio Next.**
-* **Faucet credited 0.** `sim_fundAccount` returned hashes but balances stayed 0, so the new accounts were topped up
-  from existing unlocked CLI accounts, as the brief allowed.
-* Brand registry holds 4 brands to conserve fee deposits.
-* Direct-mode tests need the v0.3 runner (`py-genlayer:5jycge…`, `GENVM_VERSION=v0.6.0-rc7`); `genlayer-test`
-  0.30.0rc2 cannot load the newer `1jb45…` runner layout.
-* Studio Next only: the simulation clock is not the block clock, so time gates must not hard-revert.
+* **Seed is 0.08 GEN (+0.04 top-up), not 0.5 GEN.** The first deployment's 0.5 GEN seed is stranded on
+  `0x4135EAF1…B01b`: Studio Next finalized the `claim_payout` but never executed the emitted transfer message.
+  **`claim_payout` settlement is therefore unverified on Studio Next**; `claim_settlement` / receipts must not be read
+  as "money arrived in the wallet".
+* With a seed of 0.08 GEN the 20 % epoch cap (0.016) is below the fixed 0.02 bounty, so the first live report reserved no
+  bounty - the top-up exercised the P03 fix instead.
+* Faucet `sim_fundAccount` credited 0; accounts were funded from existing unlocked CLI accounts as allowed.
+* Direct-mode tests need the v0.3 runner (`py-genlayer:5jycge…`, `GENVM_VERSION=v0.6.0-rc7`).
+* Superseded deployments (left untouched on chain): `0x4135EAF1…B01b`, and `0x5Ecc9853…E8DB` (eacf14c).
+* Three CDN hosts of one repo are not three independent sources of threat truth; `operator` is a registered string, not
+  verified ownership. The fixtures are commit-pinned, so a new threat/remediation needs governance to re-pin feeds.
+
+## Audit hardening (review of eacf14c)
+
+| # | Finding | Fix | Regression test |
+|---|---|---|---|
+| P01 | reserved bounty stranded when a REMEDIATED target was re-reported | prior record's `bond_held`/`bounty_reserved` are settled to the prior reporter's ledger before overwrite; strict invariant `reserved_bounty == Σ bounty_reserved`, `held_bonds == Σ bond_held` asserted after every write in the suite | `test_remediated_then_rereported_target_never_strands_reserved_bounty` (+3 variants) |
+| P02 | future `published_ts` poisoned the override high-water mark | records dated beyond `now + MAX_CLOCK_SKEW` (3600 s) are schema errors (OUTAGE); ceiling is captured outside the nondet block so validators agree | `test_future_published_ts_in_remediation_or_report_is_rejected_as_invalid` |
+| P03 | empty-pool report froze `epoch_cap` at 0 | `fund_bounty_pool` raises the current epoch cap by 20 % of the deposit; withdrawals lower it (never below paid) so deposit/withdraw cannot inflate it | `test_funding_empty_pool_mid_epoch_updates_epoch_bounty_cap` |
+| P04 | frontend accepted documents the contract treats as OUTAGE | TS classifier now enforces the same fields, integer-literal rules (`2.0` is not an int), byte cap, code-point lengths and timestamp ceiling; shared 87-vector golden corpus checked by Python **and** vitest | `tests/test_feed_parity.py`, `frontend/tests/parity.test.ts` |
+| P05 | polling superseded the loader generation and starved the list tail | single-flight `SerialLoader`: overlapping ticks coalesce into one follow-up pass, only `reset()` cancels; progressive publish; recent-50 + pinned targets | `serialLoader.test.ts` (single-flight suite) |
+| P06 | blacklisted domain did not cover its subdomains | `check_transaction_safety` / `assert_target_safe` / `get_target_status` walk registrable parents and apply the strictest active tier; public suffixes and multi-tenant hosts are never inherited; a safe parent does not clear a subdomain | `test_subdomain_inherits_parent_domain_blacklist_and_quarantine_status` (+8) |
+| P07 | LPs could deposit but not redeem in the UI | Redeem-shares form: balance, redeemable GEN, lock breakdown, 2-step (redeem -> claim) | `vault.test.ts` |
+| TC | 18 typecheck diagnostics (`u256(...)` calls) | plain-int keys; `genvm-lint typecheck` reports 0 diagnostics on rc3/rc5/rc6/rc7/rc8 | - |
+| - | `source_count` was not part of validator agreement | now compared by validators | `test_validator_agreement_compares_decision_fields` |
 
 ## Design invariants
 
@@ -87,8 +105,9 @@ deployments/studio-next.json  authoritative deployment + readbacks
 deployments/phish_guard_abi.json  live contract schema
 deploy/deploy_phish_guard.ts  deploy + seed + live report + readback (genlayer-js 2.0.0-rc.1)
 deploy/ops.ts                 ad-hoc signed writes with SDK fee estimation
-tests/                        570 direct-mode pytest tests
-frontend/                     Next.js 16.4.1 + Tailwind 4 SOC console (450 vitest tests)
+deploy/post_deploy.ts         live mid-epoch top-up + second report + readbacks
+tests/                        689 direct-mode pytest tests (+ tests/vectors golden corpus)
+frontend/                     Next.js 16.4.1 + Tailwind 4 SOC console (591 vitest tests)
 ```
 
 ## Verify
@@ -97,8 +116,8 @@ frontend/                     Next.js 16.4.1 + Tailwind 4 SOC console (450 vites
 uv venv --python 3.12 && uv pip install --prerelease=allow -r requirements-dev.txt
 export GENVM_VERSION=v0.6.0-rc7
 .venv/bin/genvm-lint check contracts/phish_guard.py     # lint + validation
-.venv/bin/genvm-lint typecheck contracts/phish_guard.py # 0 errors
-.venv/bin/python -m pytest tests -q                     # 570 passed
+.venv/bin/genvm-lint typecheck contracts/phish_guard.py # 0 errors, 0 diagnostics
+.venv/bin/python -m pytest tests -q                     # 689 passed
 cd frontend && npm ci && npx tsc --noEmit && npx eslint --max-warnings 0 . && npx vitest run && npm run build
 npm audit --registry=https://registry.npmjs.org         # 0 vulnerabilities
 ```

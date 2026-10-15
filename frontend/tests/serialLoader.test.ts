@@ -102,3 +102,110 @@ describe("SerialLoader", () => {
     expect(s.errors.a).toBe("plain string");
   });
 });
+
+describe("SerialLoader single-flight (audit P05)", () => {
+  const deferred = <V>() => {
+    let resolve!: (v: V) => void;
+    const promise = new Promise<V>((r) => (resolve = r));
+    return { promise, resolve };
+  };
+
+  it("a polling tick never cancels a scan in progress; the tail is still loaded", async () => {
+    const gates = Array.from({ length: 5 }, () => deferred<number>());
+    const started: string[] = [];
+    const l = new SerialLoader<number>((id) => {
+      started.push(id);
+      return gates[Number(id)].promise;
+    });
+    const ids = ["0", "1", "2", "3", "4"];
+    const first = l.load(ids);
+    for (let i = 0; i < 3; i++) {
+      gates[i].resolve(i + 1);
+      await Promise.resolve();
+      await Promise.resolve();
+    }
+    // slow RPC: id "3" is still pending when the next poll tick arrives
+    const tick = l.load(ids);
+    expect(l.busy).toBe(true);
+    gates[3].resolve(4);
+    gates[4].resolve(5);
+    const snap = await first;
+    await tick;
+    expect(snap.values).toEqual({ "0": 1, "1": 2, "2": 3, "3": 4, "4": 5 });
+    expect(snap.failedIds).toEqual([]);
+    expect(started.slice(0, 5)).toEqual(ids);
+  });
+
+  it("coalesces many overlapping ticks into exactly one follow-up pass", async () => {
+    let calls = 0;
+    const g = deferred<number>();
+    const l = new SerialLoader<number>(async () => {
+      calls++;
+      if (calls === 1) return g.promise;
+      return calls;
+    });
+    const p1 = l.load(["a"]);
+    l.load(["a"]);
+    l.load(["a"]);
+    l.load(["a"]);
+    g.resolve(1);
+    await p1;
+    expect(calls).toBe(2); // 1 in-flight pass + 1 coalesced follow-up, not 4
+  });
+
+  it("the follow-up pass uses the LATEST requested id list", async () => {
+    const g = deferred<string>();
+    let first = true;
+    const l = new SerialLoader<string>(async (id) => {
+      if (first) {
+        first = false;
+        return g.promise;
+      }
+      return id;
+    });
+    const p = l.load(["a"]);
+    l.load(["a", "b"]);
+    l.load(["a", "b", "c"]);
+    g.resolve("a");
+    const snap = await p;
+    expect(Object.keys(snap.values).sort()).toEqual(["a", "b", "c"]);
+  });
+
+  it("publishes progressively and marks completion", async () => {
+    const seen: number[] = [];
+    const l = new SerialLoader<number>(async (id) => Number(id));
+    let lastLoading = true;
+    await l.load(["1", "2", "3"], undefined, (s) => {
+      seen.push(Object.keys(s.values).length);
+      lastLoading = s.loading;
+    });
+    expect(seen[0]).toBe(1);
+    expect(Math.max(...seen)).toBe(3);
+    expect(lastLoading).toBe(false);
+  });
+
+  it("per-item errors survive a coalesced follow-up pass", async () => {
+    const l = new SerialLoader<number>(async (id) => {
+      if (id === "bad") throw new Error("boom");
+      return 1;
+    });
+    const p = l.load(["ok", "bad"]);
+    l.load(["ok", "bad"]);
+    const snap = await p;
+    expect(snap.failedIds).toEqual(["bad"]);
+    expect(snap.values.ok).toBe(1);
+  });
+
+  it("reset() abandons an in-flight pass and a new load starts fresh", async () => {
+    const g = deferred<string>();
+    const l = new SerialLoader<string>(async (id) => (id === "old" ? g.promise : id));
+    const stale = l.load(["old"]);
+    l.reset();
+    expect(l.busy).toBe(false);
+    const fresh = await l.load(["new"]);
+    g.resolve("old");
+    await stale;
+    expect(l.snapshot().values).toEqual({ new: "new" });
+    expect(fresh.values).toEqual({ new: "new" });
+  });
+});

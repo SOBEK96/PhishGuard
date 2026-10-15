@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from tests.conftest import FIRST_SEEN, PUBLISHED, TARGET, commit, rec
+from tests.conftest import FIRST_SEEN, MAX_TS, NOW, PUBLISHED, TARGET, commit, rec
 
 
 @pytest.mark.parametrize("slug", [
@@ -108,7 +108,7 @@ def test_commitment_is_lowercase_hex_sha256(pg, mod):
 
 # --- record parsing -----------------------------------------------------------
 def test_parse_record_roundtrip(pg, mod):
-    r = mod._parse_record(rec(), TARGET)
+    r = mod._parse_record(rec(), TARGET, MAX_TS)
     assert r["tier"] == 2 and r["status"] == "ACTIVE" and r["published_ts"] == PUBLISHED
     assert r["first_seen_ts"] == FIRST_SEEN and r["hash"] == commit()
 
@@ -129,12 +129,12 @@ def _mut(**kw):
     _mut(campaign_id=None), _mut(campaign_id="x" * 65), _mut(brand_id=7), _mut(brand_id="x" * 65),
 ])
 def test_parse_record_rejects_schema_violations(pg, mod, bad):
-    assert mod._parse_record(bad, TARGET) is None
+    assert mod._parse_record(bad, TARGET, MAX_TS) is None
 
 
 @pytest.mark.parametrize("not_a_dict", [[], "x", 5, None, [rec()]])
 def test_parse_record_rejects_non_objects(pg, mod, not_a_dict):
-    assert mod._parse_record(not_a_dict, TARGET) is None
+    assert mod._parse_record(not_a_dict, TARGET, MAX_TS) is None
 
 
 def test_parse_record_missing_keys(pg, mod):
@@ -142,7 +142,7 @@ def test_parse_record_missing_keys(pg, mod):
                 "campaign_id", "brand_id"):
         r = rec()
         del r[key]
-        assert mod._parse_record(r, TARGET) is None, key
+        assert mod._parse_record(r, TARGET, MAX_TS) is None, key
 
 
 # --- HTTP -> source mapping ---------------------------------------------------
@@ -157,23 +157,23 @@ def body(**kw):
     (None, "OUTAGE"), (204, "OUTAGE"),
 ])
 def test_status_mapping(pg, mod, status, kind):
-    assert mod._source_from_response(status, body(), TARGET)["k"] == kind
+    assert mod._source_from_response(status, body(), TARGET, MAX_TS)["k"] == kind
 
 
 def test_200_valid_is_ok(pg, mod):
-    s = mod._source_from_response(200, body(), TARGET)
+    s = mod._source_from_response(200, body(), TARGET, MAX_TS)
     assert s["k"] == "OK" and s["rec"]["tier"] == 2
 
 
 @pytest.mark.parametrize("raw", [b"{not json", b"", b"null", b"[]", b"<html></html>", b"\xff\xfe", None, 12])
 def test_200_garbage_is_outage_not_404(pg, mod, raw):
-    assert mod._source_from_response(200, raw, TARGET)["k"] == "OUTAGE"
+    assert mod._source_from_response(200, raw, TARGET, MAX_TS)["k"] == "OUTAGE"
 
 
 def test_oversized_body_is_outage(pg, mod):
     big = json.dumps({**rec(), "pad": "x" * 9000}).encode()
-    assert mod._source_from_response(200, big, TARGET)["k"] == "OUTAGE"
+    assert mod._source_from_response(200, big, TARGET, MAX_TS)["k"] == "OUTAGE"
 
 
 def test_str_body_is_accepted(pg, mod):
-    assert mod._source_from_response(200, json.dumps(rec()), TARGET)["k"] == "OK"
+    assert mod._source_from_response(200, json.dumps(rec()), TARGET, MAX_TS)["k"] == "OK"

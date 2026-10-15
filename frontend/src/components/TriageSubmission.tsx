@@ -71,6 +71,7 @@ export default function TriageSubmission({ d }: { d: Dashboard }) {
         minBond,
         (h) => d.setBanner(acct, { kind: "pending", label: "Report sent", hash: h, message: "Awaiting consensus…" }),
       );
+      d.pin(slug);
       d.setBanner(acct, { kind: "success", label: "Report accepted", hash: res.hash, message: `${res.verdict.status}/${res.verdict.consensus}` });
       await d.refresh();
     } catch (e) {

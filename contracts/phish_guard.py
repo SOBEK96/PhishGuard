@@ -110,6 +110,15 @@ NUM_SLOTS = 3
 SLOT_NAMES = ("A", "B", "C")
 COMMIT_PREFIX = "phishguard.v1"
 MAX_BODY_BYTES = 8192
+MAX_CLOCK_SKEW = 3600  # a feed record may not be dated further ahead than this
+# Multi-part public suffixes / multi-tenant hosts: a listing of one of these
+# must NEVER be inherited by the (unrelated) sites beneath it.
+PUBLIC_SUFFIXES = (
+    "co.uk", "org.uk", "ac.uk", "gov.uk", "com.au", "net.au", "org.au", "co.jp", "co.kr", "co.in",
+    "co.nz", "co.za", "com.br", "com.cn", "com.mx", "com.tr", "com.sg", "com.ar", "com.hk",
+    "github.io", "gitlab.io", "vercel.app", "netlify.app", "pages.dev", "workers.dev", "web.app",
+    "firebaseapp.com", "herokuapp.com", "blogspot.com", "azurewebsites.net", "appspot.com",
+)
 HEX_CHARS = "0123456789abcdef"
 SLUG_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789.-"
 LABEL_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_-"
@@ -140,6 +149,27 @@ def _valid_target_id(s) -> bool:
         if label == "" or label[0] == "-" or label[-1] == "-":
             return False
     return True
+
+
+def _parent_chain(target_id: str) -> list:
+    """Registrable-parent candidates of a hostname, nearest first. Always keeps
+    at least two labels and stops at a public suffix / multi-tenant host."""
+    labels = target_id.split(".")
+    out = []
+    for i in range(1, len(labels) - 1):
+        parent = ".".join(labels[i:])
+        if parent in PUBLIC_SUFFIXES:
+            break
+        out.append(parent)
+    return out
+
+
+def _tier_of_status(status: str) -> int:
+    if status == ST_BLACKLISTED:
+        return 2
+    if status == ST_QUARANTINED:
+        return 1
+    return 0
 
 
 def _valid_hash(s) -> bool:
@@ -214,7 +244,7 @@ def _feed_host(base_url) -> str:
     return host
 
 
-def _parse_record(data, target_id: str):
+def _parse_record(data, target_id: str, max_ts: int):
     """Validate one feed record. Returns a normalized dict or None (schema
     error -> the source counts as an OUTAGE, never as a slash)."""
     if not isinstance(data, dict):
@@ -234,9 +264,12 @@ def _parse_record(data, target_id: str):
         return None
     if not _valid_hash(ev):
         return None
-    if not _is_int(pub) or pub <= 0 or pub > 4102444800:
+    # A record dated in the future (beyond a small clock-skew allowance) is a
+    # schema error: it would otherwise poison the target's override high-water
+    # mark and silence every genuine later report.
+    if not _is_int(pub) or pub <= 0 or pub > max_ts:
         return None
-    if not _is_int(first) or first < 0 or first > 4102444800:
+    if not _is_int(first) or first < 0 or first > max_ts:
         return None
     if not isinstance(camp, str) or len(camp) > 64:
         return None
@@ -253,7 +286,7 @@ def _parse_record(data, target_id: str):
     }
 
 
-def _source_from_response(status, body, target_id: str) -> dict:
+def _source_from_response(status, body, target_id: str, max_ts: int) -> dict:
     """Map one HTTP response onto SRC_OK / SRC_NOT_FOUND / SRC_OUTAGE."""
     if status == 404 or status == 410:
         return {"k": SRC_NOT_FOUND}
@@ -270,7 +303,7 @@ def _source_from_response(status, body, target_id: str) -> dict:
             text = body
         else:
             return {"k": SRC_OUTAGE}
-        rec = _parse_record(json.loads(text), target_id)
+        rec = _parse_record(json.loads(text), target_id, max_ts)
     except Exception:
         return {"k": SRC_OUTAGE}
     if rec is None:
@@ -442,7 +475,7 @@ def _payload_shape_ok(p, with_revision: bool) -> bool:
 
 
 def _payloads_agree(leader_p: dict, mine: dict, with_revision: bool) -> bool:
-    keys = ["verdict", "tier", "evidence_hash", "published_ts"]
+    keys = ["verdict", "tier", "source_count", "evidence_hash", "published_ts"]
     if with_revision:
         keys.append("revision")
     for k in keys:
@@ -451,7 +484,7 @@ def _payloads_agree(leader_p: dict, mine: dict, with_revision: bool) -> bool:
     return True
 
 
-def _run_triage(urls: list, expected_hash: str, target_id: str, with_revision: bool) -> dict:
+def _run_triage(urls: list, expected_hash: str, target_id: str, with_revision: bool, max_ts: int) -> dict:
     """Fetch the three governed feeds inside a leader/validator block and
     aggregate. The leader closure touches only plain locals + gl.nondet (no
     `self`); validators re-run it and compare the DECISION fields."""
@@ -464,7 +497,7 @@ def _run_triage(urls: list, expected_hash: str, target_id: str, with_revision: b
                 status = getattr(res, "status", None)
                 if status is None:
                     status = getattr(res, "status_code", None)
-                sources.append(_source_from_response(status, res.body, target_id))
+                sources.append(_source_from_response(status, res.body, target_id, max_ts))
             except Exception:
                 sources.append({"k": SRC_OUTAGE})
         if with_revision:
@@ -568,13 +601,13 @@ class PhishGuard(gl.contract.Contract):
         if len(set(hosts)) != NUM_SLOTS or len(set(ops)) != NUM_SLOTS:
             raise gl.vm.UserError(f"{ERR_FEED} feeds need 3 distinct hosts and 3 distinct operators")
         for i in range(NUM_SLOTS):
-            self.feed_url[u256(i)] = urls[i]
-            self.feed_host[u256(i)] = hosts[i]
-            self.feed_operator[u256(i)] = ops[i]
-            self.staged_url[u256(i)] = ""
-            self.staged_host[u256(i)] = ""
-            self.staged_operator[u256(i)] = ""
-            self.staged_ready_at[u256(i)] = 0
+            self.feed_url[i] = urls[i]
+            self.feed_host[i] = hosts[i]
+            self.feed_operator[i] = ops[i]
+            self.staged_url[i] = ""
+            self.staged_host[i] = ""
+            self.staged_operator[i] = ""
+            self.staged_ready_at[i] = 0
         self.governor = gl.message.sender_address
         self.target_count = 0
         self.bounty_pool = 0
@@ -590,7 +623,7 @@ class PhishGuard(gl.contract.Contract):
     def get_feed_sources(self) -> list:
         out = []
         for i in range(NUM_SLOTS):
-            k = u256(i)
+            k = i
             out.append(
                 {
                     "slot": SLOT_NAMES[i],
@@ -608,7 +641,7 @@ class PhishGuard(gl.contract.Contract):
     @gl.public.view
     def get_pool_state(self) -> dict:
         epoch = self._epoch(self._now())
-        e = u256(epoch)
+        e = epoch
         paid = int(self.epoch_paid[e]) if e in self.epoch_paid else 0
         cap = int(self.epoch_cap[e]) if e in self.epoch_cap else (int(self.bounty_pool) * MAX_EPOCH_BOUNTY_BPS // BPS_DENOM)
         return {
@@ -638,6 +671,7 @@ class PhishGuard(gl.contract.Contract):
     def get_target_status(self, target_id: str) -> dict:
         if not _valid_target_id(target_id):
             raise gl.vm.UserError(f"{ERR_PARAMS} bad target_id")
+        eff_from, eff_status, eff_tier, _until = self._effective(target_id)
         if target_id not in self.targets:
             return {
                 "target_id": target_id,
@@ -660,6 +694,10 @@ class PhishGuard(gl.contract.Contract):
                 "first_seen_ts": 0,
                 "source_count": 0,
                 "resolutions": 0,
+                "effective_status": eff_status,
+                "effective_tier": eff_tier,
+                "effective_from": eff_from,
+                "inherited": eff_from != "" and eff_from != target_id,
             }
         t = self.targets[target_id]
         return {
@@ -683,6 +721,10 @@ class PhishGuard(gl.contract.Contract):
             "first_seen_ts": int(t.first_seen_ts),
             "source_count": int(t.source_count),
             "resolutions": int(t.resolutions),
+            "effective_status": eff_status,
+            "effective_tier": eff_tier,
+            "effective_from": eff_from,
+            "inherited": eff_from != "" and eff_from != target_id,
         }
 
     @gl.public.view
@@ -690,21 +732,12 @@ class PhishGuard(gl.contract.Contract):
         """Fast deterministic firewall read for wallets / routers.
 
         verdict: ALLOW (tier 0 / unknown), WARN (tier 1 quarantine),
-        BLOCK (tier 2 blacklist)."""
+        BLOCK (tier 2 blacklist). A listed registrable parent covers every
+        subdomain beneath it: the STRICTEST tier on the exact host or any parent
+        wins (a SAFE parent never makes a subdomain safe)."""
         if not _valid_target_id(target_id):
             raise gl.vm.UserError(f"{ERR_PARAMS} bad target_id")
-        known = target_id in self.targets
-        status = ST_UNKNOWN
-        tier = 0
-        until = 0
-        if known:
-            t = self.targets[target_id]
-            status = t.status
-            if status == ST_BLACKLISTED:
-                tier = 2
-            elif status == ST_QUARANTINED:
-                tier = 1
-            until = int(t.quarantine_until)
+        matched, status, tier, until = self._effective(target_id)
         verdict = "ALLOW"
         if tier == 2:
             verdict = "BLOCK"
@@ -712,7 +745,7 @@ class PhishGuard(gl.contract.Contract):
             verdict = "WARN"
         return {
             "target_id": target_id,
-            "known": known,
+            "known": target_id in self.targets or tier > 0,
             "status": status,
             "tier": tier,
             "tier_name": TIER_NAMES[tier],
@@ -720,6 +753,8 @@ class PhishGuard(gl.contract.Contract):
             "blocked": tier == 2,
             "warn": tier == 1,
             "quarantine_until": until,
+            "matched_target": matched,
+            "inherited": matched != "" and matched != target_id,
         }
 
     @gl.public.view
@@ -797,7 +832,7 @@ class PhishGuard(gl.contract.Contract):
         for j in range(NUM_SLOTS):
             if j == i:
                 continue
-            k = u256(j)
+            k = j
             taken_h = [self.feed_host[k]]
             taken_o = [self.feed_operator[k]]
             if self.staged_host[k] != "":
@@ -806,7 +841,7 @@ class PhishGuard(gl.contract.Contract):
             if host in taken_h or operator in taken_o:
                 raise gl.vm.UserError(f"{ERR_FEED} host/operator not unique")
         ready = self._now() + FEED_TIMELOCK
-        k = u256(i)
+        k = i
         self.staged_url[k] = base_url
         self.staged_host[k] = host
         self.staged_operator[k] = operator
@@ -820,7 +855,7 @@ class PhishGuard(gl.contract.Contract):
         i = int(slot)
         if i < 0 or i >= NUM_SLOTS:
             raise gl.vm.UserError(f"{ERR_PARAMS} slot")
-        k = u256(i)
+        k = i
         if self.staged_host[k] == "":
             raise gl.vm.UserError(f"{ERR_STATE} nothing staged")
         if self._now() < int(self.staged_ready_at[k]):
@@ -832,8 +867,8 @@ class PhishGuard(gl.contract.Contract):
                 hosts.append(self.staged_host[k])
                 ops.append(self.staged_operator[k])
             else:
-                hosts.append(self.feed_host[u256(j)])
-                ops.append(self.feed_operator[u256(j)])
+                hosts.append(self.feed_host[j])
+                ops.append(self.feed_operator[j])
         if len(set(hosts)) != NUM_SLOTS or len(set(ops)) != NUM_SLOTS:
             raise gl.vm.UserError(f"{ERR_FEED} host/operator not unique")
         self.feed_url[k] = self.staged_url[k]
@@ -850,7 +885,7 @@ class PhishGuard(gl.contract.Contract):
         i = int(slot)
         if i < 0 or i >= NUM_SLOTS:
             raise gl.vm.UserError(f"{ERR_PARAMS} slot")
-        k = u256(i)
+        k = i
         self.staged_url[k] = ""
         self.staged_host[k] = ""
         self.staged_operator[k] = ""
@@ -881,6 +916,11 @@ class PhishGuard(gl.contract.Contract):
             raise gl.vm.UserError(f"{ERR_BOND} deposit too small")
         self.shares[key] = (int(self.shares[key]) if key in self.shares else 0) + minted
         self.bounty_pool = assets + amount
+        # Capital added mid-epoch raises that epoch's cap by the same 20 % share,
+        # so a report made while the pool was empty cannot freeze the cap at 0.
+        e = self._epoch(self._now())
+        if e in self.epoch_cap:
+            self.epoch_cap[e] = int(self.epoch_cap[e]) + amount * MAX_EPOCH_BOUNTY_BPS // BPS_DENOM
         return str(minted)
 
     @gl.public.write
@@ -901,6 +941,14 @@ class PhishGuard(gl.contract.Contract):
         self.shares[key] = have - n
         self.total_shares = total - n
         self.bounty_pool = assets - out
+        # Mirror image of funding: withdrawn liquidity leaves the cap too (never
+        # below what was already paid), so deposit/withdraw cannot inflate it.
+        e = self._epoch(self._now())
+        if e in self.epoch_cap:
+            paid = int(self.epoch_paid[e]) if e in self.epoch_paid else 0
+            cut = out * MAX_EPOCH_BOUNTY_BPS // BPS_DENOM
+            cap = int(self.epoch_cap[e])
+            self.epoch_cap[e] = paid if cap - cut < paid else cap - cut
         self._credit(key, out)
         return str(out)
 
@@ -968,7 +1016,7 @@ class PhishGuard(gl.contract.Contract):
             self.locked_slash_reserve = int(self.locked_slash_reserve) + bond
             return "TIER_0_SAFE_OFFICIAL_DOMAIN"
 
-        payload = _run_triage(self._feed_urls(target_id), evidence_hash, target_id, False)
+        payload = _run_triage(self._feed_urls(target_id), evidence_hash, target_id, False, now + MAX_CLOCK_SKEW)
         verdict = int(payload["verdict"])
 
         if verdict == VERDICT_QUORUM_FAILURE:
@@ -976,7 +1024,13 @@ class PhishGuard(gl.contract.Contract):
             self._credit(sender_hex, bond)
             return "QUORUM_FAILURE"
 
-        override_ts = int(self.targets[target_id].override_ts) if existing else 0
+        override_ts = 0
+        if existing:
+            override_ts = int(self.targets[target_id].override_ts)
+            # Anything the previous record still escrows (an unvested bounty left
+            # by a REMEDIATED appeal, a held bond) is settled to its reporter's
+            # pull ledger BEFORE the record is replaced, so nothing is orphaned.
+            self._settle_prior(target_id)
         t = self._fresh_target(
             target_id, existing, sender, bond, now, evidence_hash, campaign_id, brand_id, first_seen
         )
@@ -1035,7 +1089,7 @@ class PhishGuard(gl.contract.Contract):
         now = self._now()
         if now < int(t.quarantine_until):
             raise gl.vm.UserError(f"{ERR_TIMELOCK} quarantine watch still running")
-        payload = _run_triage(self._feed_urls(target_id), t.evidence_hash, target_id, False)
+        payload = _run_triage(self._feed_urls(target_id), t.evidence_hash, target_id, False, now + MAX_CLOCK_SKEW)
         verdict = int(payload["verdict"])
         if verdict == VERDICT_QUORUM_FAILURE:
             return "QUORUM_FAILURE"
@@ -1106,7 +1160,9 @@ class PhishGuard(gl.contract.Contract):
             raise gl.vm.UserError(f"{ERR_UNAUTHORIZED} reporter cannot appeal own report")
         sender_hex = _hex(sender)
 
-        payload = _run_triage(self._feed_urls(target_id), t.evidence_hash, target_id, True)
+        payload = _run_triage(
+            self._feed_urls(target_id), t.evidence_hash, target_id, True, self._now() + MAX_CLOCK_SKEW
+        )
         verdict = int(payload["verdict"])
         if verdict == VERDICT_QUORUM_FAILURE:
             self._credit(sender_hex, bond)
@@ -1171,6 +1227,30 @@ class PhishGuard(gl.contract.Contract):
         return str(amount)
 
     # --------------------------------------------------------------- internals
+    def _effective(self, target_id: str):
+        """(matched_target, status, tier, quarantine_until) after parent walk."""
+        matched = ""
+        status = ST_UNKNOWN
+        tier = 0
+        until = 0
+        if target_id in self.targets:
+            t = self.targets[target_id]
+            matched = target_id
+            status = t.status
+            tier = _tier_of_status(t.status)
+            until = int(t.quarantine_until)
+        for parent in _parent_chain(target_id):
+            if parent not in self.targets:
+                continue
+            pt = self.targets[parent]
+            ptier = _tier_of_status(pt.status)
+            if ptier > tier:  # strictly stricter: nearest parent wins ties
+                matched = parent
+                status = pt.status
+                tier = ptier
+                until = int(pt.quarantine_until)
+        return matched, status, tier, until
+
     def _only_governor(self) -> None:
         if gl.message.sender_address != self.governor:
             raise gl.vm.UserError(f"{ERR_UNAUTHORIZED} governor only")
@@ -1201,7 +1281,7 @@ class PhishGuard(gl.contract.Contract):
     def _feed_urls(self, target_id: str) -> list:
         urls = []
         for i in range(NUM_SLOTS):
-            urls.append(self.feed_url[u256(i)] + target_id + ".json")
+            urls.append(self.feed_url[i] + target_id + ".json")
         return urls
 
     def _fresh_target(
@@ -1229,6 +1309,19 @@ class PhishGuard(gl.contract.Contract):
             resolutions=prev,
         )
 
+    def _settle_prior(self, target_id: str) -> None:
+        prior = self.targets[target_id]
+        bond = int(prior.bond_held)
+        bounty = int(prior.bounty_reserved)
+        if bond == 0 and bounty == 0:
+            return
+        self.held_bonds = int(self.held_bonds) - bond
+        self.reserved_bounty = int(self.reserved_bounty) - bounty
+        prior.bond_held = 0
+        prior.bounty_reserved = 0
+        self.targets[target_id] = prior
+        self._credit(_hex(prior.reporter), bond + bounty)
+
     def _store_target(self, target_id: str, existing: bool, t: Target) -> None:
         if not existing:
             self.target_index[self.target_count] = target_id
@@ -1250,7 +1343,7 @@ class PhishGuard(gl.contract.Contract):
         if t.campaign_id in self.campaign_paid and self.campaign_paid[t.campaign_id]:
             return
         epoch = self._epoch(now)
-        e = u256(epoch)
+        e = epoch
         rk = f"{epoch}|{reporter_hex}"
         count = int(self.reporter_epoch_bounties[rk]) if rk in self.reporter_epoch_bounties else 0
         if count >= MAX_BOUNTIES_PER_REPORTER_EPOCH:
@@ -1277,7 +1370,7 @@ class PhishGuard(gl.contract.Contract):
             return
         self.reserved_bounty = int(self.reserved_bounty) - amount
         self.bounty_pool = int(self.bounty_pool) + amount
-        e = u256(int(t.bounty_epoch))
+        e = int(t.bounty_epoch)
         if e in self.epoch_paid and int(self.epoch_paid[e]) >= amount:
             self.epoch_paid[e] = int(self.epoch_paid[e]) - amount
         if t.campaign_id in self.campaign_paid:

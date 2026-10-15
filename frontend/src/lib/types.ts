@@ -66,6 +66,10 @@ export interface TargetStatus {
   first_seen_ts: number;
   source_count: number;
   resolutions: number;
+  effective_status: TargetState;
+  effective_tier: TierNumber;
+  effective_from: string;
+  inherited: boolean;
 }
 
 export type FirewallVerdict = "ALLOW" | "WARN" | "BLOCK";
@@ -80,6 +84,10 @@ export interface SafetyCheck {
   blocked: boolean;
   warn: boolean;
   quarantine_until: number;
+  /** The host (exact or registrable parent) whose listing decided the verdict. */
+  matched_target: string;
+  /** True when the verdict came from a parent domain, not the exact host. */
+  inherited: boolean;
 }
 
 /** What one threat-intel host answered for a target. */

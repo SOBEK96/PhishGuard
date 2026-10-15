@@ -33,6 +33,7 @@ export default function AppealCourt({ d }: { d: Dashboard }) {
         kind === "appeal"
           ? await appeal(acct, slug, parseGen(bond), minAppeal, onHash)
           : await reevaluate(acct, slug, onHash);
+      d.pin(slug);
       d.setBanner(acct, { kind: "success", label: kind === "appeal" ? "Appeal decided" : "Re-evaluation decided", hash: res.hash });
       await d.refresh();
     } catch (e) {

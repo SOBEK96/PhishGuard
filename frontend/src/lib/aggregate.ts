@@ -4,6 +4,7 @@
  * does -- and the unit tests pin it to a brute-force semantic oracle so it
  * cannot drift from the on-chain rules.
  */
+import { FloatLiteral, parseStrictJson, type JsonValue } from "./strictJson";
 import type { AggregatePayload, SourceOutcome, TierNumber } from "./types";
 
 export const VERDICT = { SAFE_OR_UNFOUNDED: 0, VERIFIED_REPORT: 1, QUORUM_FAILURE: 2 } as const;
@@ -47,37 +48,68 @@ export function aggregate(sources: SourceOutcome[], expectedHash: string): Aggre
   return { verdict: 0, tier: 0, source_count: clean, evidence_hash: expectedHash, published_ts: pub };
 }
 
-/** Same HTTP -> outcome mapping as the contract (`_source_from_response`). */
-export function classifyResponse(status: number | null, body: unknown, targetId: string): SourceOutcome {
+/** Hard ceiling on a feed body (bytes) -- identical to the contract's MAX_BODY_BYTES. */
+export const MAX_BODY_BYTES = 8192;
+/** A record may not be dated further ahead than this -- the contract's MAX_CLOCK_SKEW. */
+export const MAX_CLOCK_SKEW = 3600;
+const STRICT_UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
+export function defaultMaxTs(nowSeconds: number = Math.floor(Date.now() / 1000)): number {
+  return nowSeconds + MAX_CLOCK_SKEW;
+}
+
+const isInt = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v);
+const codePoints = (s: string): number => Array.from(s).length;
+
+/**
+ * Same HTTP -> outcome mapping as the contract (`_source_from_response` +
+ * `_parse_record`): same required fields, integer rules (a float literal such
+ * as `2.0` is NOT an integer), timestamp ceiling, byte-size cap and hash check.
+ * Differential-tested against the contract with tests/vectors/feed_parity.json.
+ */
+export function classifyResponse(
+  status: number | null,
+  body: string | Uint8Array | null,
+  targetId: string,
+  maxTs: number = defaultMaxTs(),
+): SourceOutcome {
+  const outage = (reason: string): SourceOutcome => ({ kind: "OUTAGE", reason });
   if (status === 404 || status === 410) return { kind: "NOT_FOUND" };
-  if (status !== 200) return { kind: "OUTAGE", reason: status === null ? "no response" : `HTTP ${status}` };
-  let data: unknown = body;
-  if (typeof body === "string") {
-    if (body.length > 8192) return { kind: "OUTAGE", reason: "oversized body" };
-    try {
-      data = JSON.parse(body);
-    } catch {
-      return { kind: "OUTAGE", reason: "invalid JSON" };
-    }
+  if (status !== 200) return outage(status === null ? "no response" : `HTTP ${status}`);
+  if (body === null) return outage("empty body");
+
+  let bytes: Uint8Array;
+  if (typeof body === "string") bytes = new TextEncoder().encode(body);
+  else bytes = body;
+  if (bytes.length > MAX_BODY_BYTES) return outage("oversized body");
+
+  let data: JsonValue;
+  try {
+    data = parseStrictJson(STRICT_UTF8.decode(bytes));
+  } catch {
+    return outage("invalid JSON");
   }
-  if (typeof data !== "object" || data === null || Array.isArray(data)) {
-    return { kind: "OUTAGE", reason: "schema error" };
+  if (typeof data !== "object" || data === null || Array.isArray(data) || data instanceof FloatLiteral) {
+    return outage("schema error");
   }
-  const r = data as Record<string, unknown>;
-  const isInt = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v);
-  if (r.target_id !== targetId) return { kind: "OUTAGE", reason: "wrong target" };
-  if (!isInt(r.tier) || r.tier < 0 || r.tier > 2) return { kind: "OUTAGE", reason: "bad tier" };
-  if (typeof r.status !== "string" || !REC_STATUSES.includes(r.status)) return { kind: "OUTAGE", reason: "bad status" };
-  if (typeof r.evidence_hash !== "string" || !HASH.test(r.evidence_hash)) return { kind: "OUTAGE", reason: "bad hash" };
-  if (!isInt(r.published_ts) || r.published_ts <= 0 || r.published_ts > 4102444800) {
-    return { kind: "OUTAGE", reason: "bad published_ts" };
-  }
+  const r = data as { [k: string]: JsonValue };
+  if (r.target_id !== targetId) return outage("wrong target");
+  const tier = r.tier;
+  if (!isInt(tier) || tier < 0 || tier > 2) return outage("bad tier");
+  if (typeof r.status !== "string" || !REC_STATUSES.includes(r.status)) return outage("bad status");
+  if (typeof r.evidence_hash !== "string" || !HASH.test(r.evidence_hash)) return outage("bad hash");
+  const pub = r.published_ts;
+  if (!isInt(pub) || pub <= 0 || pub > maxTs) return outage("bad published_ts");
+  const first = r.first_seen_ts;
+  if (!isInt(first) || first < 0 || first > maxTs) return outage("bad first_seen_ts");
+  if (typeof r.campaign_id !== "string" || codePoints(r.campaign_id) > 64) return outage("bad campaign_id");
+  if (typeof r.brand_id !== "string" || codePoints(r.brand_id) > 64) return outage("bad brand_id");
   return {
     kind: "OK",
-    tier: r.tier as TierNumber,
+    tier: tier as TierNumber,
     status: r.status,
     evidenceHash: r.evidence_hash,
-    publishedTs: r.published_ts,
+    publishedTs: pub,
   };
 }
 
@@ -91,13 +123,14 @@ export async function fetchSource(
   targetId: string,
   fetchImpl: typeof fetch = fetch,
   timeoutMs = 8000,
+  maxTs: number = defaultMaxTs(),
 ): Promise<SourceOutcome> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {
     const res = await fetchImpl(feedUrl(baseUrl, targetId), { signal: ctl.signal, cache: "no-store" });
     if (res.status !== 200) return classifyResponse(res.status, null, targetId);
-    return classifyResponse(200, await res.text(), targetId);
+    return classifyResponse(200, new Uint8Array(await res.arrayBuffer()), targetId, maxTs);
   } catch (e) {
     return { kind: "OUTAGE", reason: e instanceof Error ? e.name : "network error" };
   } finally {

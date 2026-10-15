@@ -9,6 +9,7 @@ import {
   readFeeds,
   readClient,
   readPool,
+  readShares,
   readTarget,
   readTargetIndex,
   type EthereumProvider,
@@ -32,6 +33,7 @@ export function useDashboard() {
   const [feeds, setFeeds] = useState<FeedSource[]>([]);
   const [targets, setTargets] = useState<LoaderSnapshot<TargetStatus> | null>(null);
   const [claimable, setClaimable] = useState<Scoped<string> | null>(null);
+  const [shares, setShares] = useState<Scoped<string> | null>(null);
   const [banners, setBanners] = useState<Record<string, TxBanner>>({});
   const [poolError, setPoolError] = useState<string | null>(null);
   const [syncedAt, setSyncedAt] = useState<number | null>(null);
@@ -44,8 +46,13 @@ export function useDashboard() {
     }),
   );
   const accountRef = useRef("");
+  // Single-flight refresh: a poll tick that lands while a scan is running is
+  // folded into ONE follow-up refresh instead of cancelling the scan.
+  const refreshing = useRef(false);
+  const rerun = useRef(false);
+  const pinned = useRef<Set<string>>(new Set());
 
-  const refresh = useCallback(async () => {
+  const refreshOnce = useCallback(async (): Promise<void> => {
     try {
       const client = await readClient();
       const p = await readPool(client);
@@ -53,8 +60,9 @@ export function useDashboard() {
       setPoolError(null);
       const f = await readFeeds(client).catch(() => null);
       if (f) setFeeds(f);
-      const ids = await readTargetIndex(client, p.target_count);
-      const snap = await loader.current.load(ids);
+      const recent = await readTargetIndex(client, p.target_count);
+      const ids = Array.from(new Set([...recent, ...pinned.current]));
+      const snap = await loader.current.load(ids, undefined, (s) => setTargets(s));
       setTargets(snap);
       // Anchor the monotone clock on the freshest target timestamps we can see.
       for (const t of Object.values(snap.values)) {
@@ -66,11 +74,33 @@ export function useDashboard() {
         const c = await readClaimable(client, acct).catch(() => null);
         // Drop the answer if the wallet changed while the read was in flight.
         if (c !== null && accountRef.current === acct) setClaimable(scope(acct, c));
+        const sh = await readShares(client, acct).catch(() => null);
+        if (sh !== null && accountRef.current === acct) setShares(scope(acct, sh));
       }
       setSyncedAt(Date.now());
     } catch (e) {
       setPoolError(e instanceof Error ? e.message : String(e));
     }
+  }, []);
+
+  const refresh = useCallback(async (): Promise<void> => {
+    if (refreshing.current) {
+      rerun.current = true;
+      return;
+    }
+    refreshing.current = true;
+    try {
+      do {
+        rerun.current = false;
+        await refreshOnce();
+      } while (rerun.current);
+    } finally {
+      refreshing.current = false;
+    }
+  }, [refreshOnce]);
+
+  const pin = useCallback((id: string) => {
+    pinned.current.add(id);
   }, []);
 
   // Account lifecycle: accountsChanged immediately clears every per-account panel.
@@ -82,6 +112,7 @@ export function useDashboard() {
       accountRef.current = next;
       setAccount(next);
       setClaimable(null);
+      setShares(null);
       setBanners({});
       if (next) void refresh();
     };
@@ -114,6 +145,7 @@ export function useDashboard() {
     accountRef.current = next;
     setAccount(next);
     setClaimable(null);
+    setShares(null);
     void refresh();
   }, [refresh]);
 
@@ -132,6 +164,8 @@ export function useDashboard() {
     feeds,
     targets,
     claimable: select(claimable, account, "0"),
+    shares: select(shares, account, "0"),
+    pin,
     banner: getFor(banners, account) ?? null,
     poolError,
     syncedAt,

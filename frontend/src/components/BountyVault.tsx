@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Vault } from "lucide-react";
 import Panel from "./Panel";
 import TxBannerView from "./TxBannerView";
-import { claimPayout, claimSettlement, fundPool } from "@/lib/contract";
+import { claimPayout, claimSettlement, fundPool, withdrawShares } from "@/lib/contract";
+import { lockBreakdown, redeemableAssets, validateRedeem } from "@/lib/vault";
 import { bpsToPercent, formatGen, parseGen, ratioBps } from "@/lib/format";
 import type { Dashboard } from "@/lib/useDashboard";
 
@@ -24,6 +25,7 @@ function Meter({ label, value, bps, color }: { label: string; value: string; bps
 
 export default function BountyVault({ d }: { d: Dashboard }) {
   const [deposit, setDeposit] = useState("0.05");
+  const [redeem, setRedeem] = useState("");
   const [busy, setBusy] = useState(false);
   const p = d.pool;
 
@@ -53,6 +55,20 @@ export default function BountyVault({ d }: { d: Dashboard }) {
   const total = BigInt(p.balance) > 0n ? BigInt(p.balance) : 1n;
   const capUsedBps = ratioBps(BigInt(p.epoch_paid), BigInt(p.epoch_cap) > 0n ? BigInt(p.epoch_cap) : 1n);
   const claimable = BigInt(d.claimable);
+  const held = BigInt(d.shares);
+  const totalShares = BigInt(p.total_shares);
+  const freePool = BigInt(p.bounty_pool);
+  const lock = lockBreakdown(p);
+  const redeemAll = redeemableAssets(held, totalShares, freePool);
+  let redeemShares = 0n;
+  let redeemParseError: string | null = null;
+  try {
+    redeemShares = redeem.trim() === "" ? 0n : parseGen(redeem);
+  } catch {
+    redeemParseError = "Enter a share amount like 0.05";
+  }
+  const redeemError = redeem.trim() === "" ? null : (redeemParseError ?? validateRedeem(redeemShares, held, totalShares, freePool));
+  const redeemOut = redeemError ? 0n : redeemableAssets(redeemShares, totalShares, freePool);
 
   return (
     <Panel id="vault" title="Bounty vault & slash reserve" icon={<Vault className="h-4 w-4" />}
@@ -114,6 +130,54 @@ export default function BountyVault({ d }: { d: Dashboard }) {
               Vest {t.target_id}
             </button>
           ))}
+      </div>
+      <div className="mt-5 rounded border border-edge bg-carbon/70 p-3">
+        <div className="text-[11px] uppercase tracking-wider text-mute">Redeem vault shares</div>
+        <div className="mt-2 grid gap-1 text-xs sm:grid-cols-2">
+          <span className="text-mute">
+            Your shares: <b className="sig text-ink">{formatGen(d.shares, 6)}</b>
+          </span>
+          <span className="text-mute">
+            Redeemable now: <b className="sig text-safe">{formatGen(redeemAll, 6)} GEN</b>
+          </span>
+        </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+          <input
+            aria-label="Shares to redeem"
+            className="sig min-h-11 rounded border border-edge bg-obsidian px-3 text-sm outline-none focus:border-radar"
+            placeholder="shares (e.g. 0.05)"
+            value={redeem}
+            onChange={(e) => setRedeem(e.target.value)}
+          />
+          <button
+            type="button"
+            disabled={held === 0n}
+            onClick={() => setRedeem(formatGen(held, 18))}
+            className="min-h-11 rounded border border-edge px-4 text-xs text-mute disabled:opacity-40"
+          >
+            Max
+          </button>
+          <button
+            disabled={busy || !d.account || redeem.trim() === "" || redeemError !== null}
+            onClick={() => void run("Redeem shares", (a, h) => withdrawShares(a, redeemShares, h))}
+            className="min-h-11 rounded border border-radar/60 bg-radar/10 px-5 text-sm font-semibold text-radar disabled:opacity-40"
+          >
+            Redeem
+          </button>
+        </div>
+        {redeemError && <p className="mt-1 text-xs text-caution">{redeemError}</p>}
+        {!redeemError && redeemShares > 0n && (
+          <p className="sig mt-1 text-xs text-mute">
+            you receive {formatGen(redeemOut, 6)} GEN into your claimable balance - then press <b>Claim</b> above (2 steps).
+          </p>
+        )}
+        <ul className="sig mt-3 space-y-0.5 text-[11px] text-mute">
+          <li>free liquidity (redeemable): {formatGen(lock.freeLiquidity, 6)} GEN</li>
+          <li>locked - reserved bounties (vesting): {formatGen(lock.reservedBounties, 6)} GEN</li>
+          <li>locked - held reporter bonds: {formatGen(lock.heldBonds, 6)} GEN</li>
+          <li>locked - slash reserve: {formatGen(lock.slashReserve, 6)} GEN</li>
+          <li>share floor: {lock.deadShares.toString()} dead shares can never be redeemed</li>
+        </ul>
       </div>
       <TxBannerView banner={d.banner} />
     </Panel>

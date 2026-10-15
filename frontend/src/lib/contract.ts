@@ -98,7 +98,13 @@ export async function readClaimable(client: SdkClient, owner: string): Promise<s
   return v;
 }
 
-export async function readTargetIndex(client: SdkClient, count: number, limit = 12): Promise<string[]> {
+export async function readShares(client: SdkClient, owner: string): Promise<string> {
+  const v = await call(client, "shares_of", [owner.toLowerCase()]);
+  if (typeof v !== "string" || !/^\d+$/.test(v)) throw new Error("shares: bad shape");
+  return v;
+}
+
+export async function readTargetIndex(client: SdkClient, count: number, limit = 50): Promise<string[]> {
   const ids: string[] = [];
   const start = Math.max(0, count - limit);
   for (let i = count - 1; i >= start; i--) {
@@ -156,6 +162,11 @@ export async function claimPayout(account: string, onHash?: (h: string) => void)
 export async function fundPool(account: string, valueWei: bigint, onHash?: (h: string) => void) {
   if (valueWei <= 0n) throw new Error("Deposit must be greater than zero.");
   return sendWrite(account, "fund_bounty_pool", [], valueWei, onHash);
+}
+
+export async function withdrawShares(account: string, shareAmount: bigint, onHash?: (h: string) => void) {
+  if (shareAmount <= 0n) throw new Error("Share amount must be greater than zero.");
+  return sendWrite(account, "withdraw_pool_shares", [shareAmount], 0n, onHash);
 }
 
 export async function reevaluate(account: string, targetId: string, onHash?: (h: string) => void) {

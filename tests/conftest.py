@@ -30,6 +30,7 @@ OP_A, OP_B, OP_C = "github.com", "jsdelivr.com", "githack.com"
 # 2026-10-15T00:00:00Z -- every fixture timestamp below is earlier.
 NOW = calendar.timegm(time.strptime("2026-10-15", "%Y-%m-%d"))
 NOW_ISO = "2026-10-15T00:00:00Z"
+MAX_TS = NOW + 3600  # the contract's published_ts ceiling (now + MAX_CLOCK_SKEW)
 FIRST_SEEN = NOW - 20 * DAY
 PUBLISHED = NOW - 10 * DAY
 REVISED = NOW - 5 * DAY
@@ -96,9 +97,27 @@ def send(vm, c, who, fn, *args, value=0):
         vm.deal(vm._contract_address, contract_balance(c) + value)
     vm.value = value
     try:
-        return fn(*args)
+        out = fn(*args)
     finally:
         vm.value = 0
+    assert_accounting(c)
+    return out
+
+
+def assert_accounting(c) -> None:
+    """Strict ledger invariants, checked after EVERY write made through `send`:
+    reserved_bounty == sum(target.bounty_reserved) and
+    held_bonds == sum(target.bond_held), and the vault never over-promises."""
+    n = int(c.get_target_count())
+    reserved = held = 0
+    for i in range(n):
+        t = c.get_target_status(c.get_target_id_by_index(i))
+        reserved += int(t["bounty_reserved"])
+        held += int(t["bond_held"])
+    p = c.get_pool_state()
+    assert int(p["reserved_bounty"]) == reserved, f"reserved_bounty {p['reserved_bounty']} != sum {reserved}"
+    assert int(p["held_bonds"]) == held, f"held_bonds {p['held_bonds']} != sum {held}"
+    assert p["solvent"] is True
 
 
 def hexof(c, vm, who) -> str:

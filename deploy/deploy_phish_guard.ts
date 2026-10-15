@@ -119,6 +119,15 @@ async function read(client: any, address: string, functionName: string, args: un
   return toJson(await client.readContract({ address, functionName, args }));
 }
 
+/** Read that records a revert as data (assert_target_safe is SUPPOSED to revert on a drainer). */
+async function readOutcome(client: any, address: string, functionName: string, args: unknown[] = []) {
+  try {
+    return { reverted: false, value: await read(client, address, functionName, args) };
+  } catch (e) {
+    return { reverted: true, error: String((e as Error)?.message ?? e).slice(0, 300) };
+  }
+}
+
 async function main() {
   const deployer = await loadAccount("phishguard-deployer");
   const reporter = await loadAccount("phishguard-reporter");
@@ -185,6 +194,11 @@ async function main() {
     get_target_status: await read(dClient, address, "get_target_status", [LIVE_TARGET.target_id]),
     get_feed_sources: await read(dClient, address, "get_feed_sources"),
     check_transaction_safety: await read(dClient, address, "check_transaction_safety", [LIVE_TARGET.target_id]),
+    check_transaction_safety_subdomain: await read(dClient, address, "check_transaction_safety", [`app.${LIVE_TARGET.target_id}`]),
+    check_transaction_safety_deep_subdomain: await read(dClient, address, "check_transaction_safety", [`claim.app.${LIVE_TARGET.target_id}`]),
+    get_target_status_subdomain: await read(dClient, address, "get_target_status", [`app.${LIVE_TARGET.target_id}`]),
+    check_transaction_safety_unrelated: await read(dClient, address, "check_transaction_safety", ["notuniswap-claim-airdrop.com"]),
+    assert_target_safe_subdomain: await readOutcome(dClient, address, "assert_target_safe", [`app.${LIVE_TARGET.target_id}`]),
     get_governor: await read(dClient, address, "get_governor"),
     get_brand_uniswap: await read(dClient, address, "get_brand", ["uniswap"]),
   };
